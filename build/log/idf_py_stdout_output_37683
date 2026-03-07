@@ -1,0 +1,22 @@
+[1/14] Generating ../../index.html.S
+[2/14] Generating ../../style.css.S
+[3/14] Generating ../../script.js.S
+[4/14] Building ASM object esp-idf/main/CMakeFiles/__idf_main.dir/__/__/index.html.S.obj
+[5/14] Building ASM object esp-idf/main/CMakeFiles/__idf_main.dir/__/__/style.css.S.obj
+[6/14] Building ASM object esp-idf/main/CMakeFiles/__idf_main.dir/__/__/script.js.S.obj
+[7/14] Linking C static library esp-idf/main/libmain.a
+[8/14] Performing build step for 'bootloader'
+[1/1] cd /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/bootloader/esp-idf/esptool_py && /home/hualde/.espressif/python_env/idf5.3_py3.10_env/bin/python /home/hualde/esp/v5.3.2/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/bootloader/bootloader.bin
+Bootloader binary size 0x6880 bytes. 0x780 bytes (7%) free.
+[9/14] No install step for 'bootloader'
+[10/14] Completed 'bootloader'
+[11/14] Generating ld/sections.ld
+[12/14] Linking CXX executable esp32_webserver_lang.elf
+[13/14] Generating binary image from built executable
+esptool.py v4.11.0
+Creating esp32 image...
+Merged 2 ELF sections
+Successfully created esp32 image.
+Generated /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/esp32_webserver_lang.bin
+[14/14] cd /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/esp-idf/esptool_py && /home/hualde/.espressif/python_env/idf5.3_py3.10_env/bin/python /home/hualde/esp/v5.3.2/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/partition_table/partition-table.bin /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/esp32_webserver_lang.bin
+esp32_webserver_lang.bin binary size 0xcc180 bytes. Smallest app partition is 0x100000 bytes. 0x33e80 bytes (20%) free.

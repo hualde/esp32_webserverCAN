@@ -1,11 +1,12 @@
 :root {
-    --primary-color: #00d2ff;
-    --secondary-color: #3a7bd5;
-    --bg-gradient: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
-    --glass-bg: rgba(255, 255, 255, 0.05);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --text-color: #e0e0e0;
-    --accent-glow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    --primary-color: #D9017A;
+    --primary-light: #ff33a1;
+    --secondary-color: #9c0056;
+    --bg-gradient: linear-gradient(135deg, #1a000e 0%, #2d0018 50%, #400022 100%);
+    --glass-bg: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(217, 1, 122, 0.2);
+    --text-color: #fce4ec;
+    --accent-glow: 0 8px 32px 0 rgba(217, 1, 122, 0.3);
 }
 
 * {
@@ -53,6 +54,7 @@ h1 {
     letter-spacing: -0.5px;
     background: linear-gradient(to right, #fff, #aaa);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 

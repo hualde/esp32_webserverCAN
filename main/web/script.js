@@ -1,40 +1,36 @@
 const translations = {
     es: {
-        title: "Panel de Control ESP32",
+        title: "Lizarte On! Configurator",
         status: "Dispositivo conectado y listo.",
         btn1: "Acción 1",
         btn2: "Acción 2",
-        footer: "Servidor Web ESP32 v5.3.2",
         next: "Siguiente Paso",
         finish: "Finalizar",
         completed: "¡Acción completada!"
     },
     en: {
-        title: "ESP32 Control Panel",
+        title: "Lizarte On! Configurator",
         status: "Device connected and ready.",
         btn1: "Action 1",
         btn2: "Action 2",
-        footer: "ESP32 Web Server v5.3.2",
         next: "Next Step",
         finish: "Finish",
         completed: "Action completed!"
     },
     fr: {
-        title: "Tableau de Bord ESP32",
+        title: "Lizarte On! Configurator",
         status: "Appareil conectado y listo.",
         btn1: "Action 1",
         btn2: "Action 2",
-        footer: "Servidor Web ESP32 v5.3.2",
         next: "Étape Suivante",
         finish: "Terminer",
         completed: "Action terminée!"
     },
     de: {
-        title: "ESP32 Kontrollpanel",
+        title: "Lizarte On! Configurator",
         status: "Gerät verbunden und bereit.",
         btn1: "Aktion 1",
         btn2: "Aktion 2",
-        footer: "ESP32 Web Server v5.3.2",
         next: "Nächster Schritt",
         finish: "Abschließen",
         completed: "Aktion abgeschlossen!"
@@ -65,7 +61,6 @@ function changeLanguage() {
     document.getElementById('status-text').innerText = t.status;
     document.querySelector('#btn-1 .btn-text').innerText = t.btn1;
     document.querySelector('#btn-2 .btn-text').innerText = t.btn2;
-    document.getElementById('footer-text').innerText = t.footer;
 
     // If we are in step screen, update it too
     if (currentActionKey) {
