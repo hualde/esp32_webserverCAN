@@ -2,11 +2,11 @@
     --primary-color: #D9017A;
     --primary-light: #ff33a1;
     --secondary-color: #9c0056;
-    --bg-gradient: linear-gradient(135deg, #1a000e 0%, #2d0018 50%, #400022 100%);
-    --glass-bg: rgba(255, 255, 255, 0.03);
-    --glass-border: rgba(217, 1, 122, 0.2);
-    --text-color: #fce4ec;
-    --accent-glow: 0 8px 32px 0 rgba(217, 1, 122, 0.3);
+    --bg-gradient: linear-gradient(135deg, #ffffff 0%, #fce4ec 50%, #f8bbd0 100%);
+    --glass-bg: rgba(255, 255, 255, 0.6);
+    --glass-border: rgba(217, 1, 122, 0.15);
+    --text-color: #4a0029;
+    --accent-glow: 0 15px 35px rgba(217, 1, 122, 0.15);
 }
 
 * {
@@ -19,20 +19,19 @@ body {
     font-family: 'Inter', sans-serif;
     background: var(--bg-gradient);
     background-attachment: fixed;
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
     color: var(--text-color);
-    overflow: hidden;
 }
 
 .glass-container {
     background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
-    border-radius: 24px;
+    border-radius: 32px;
     padding: 40px;
     width: 90%;
     max-width: 500px;
@@ -49,39 +48,41 @@ header {
 }
 
 h1 {
-    font-weight: 600;
+    font-weight: 700;
     font-size: 1.8rem;
-    letter-spacing: -0.5px;
-    background: linear-gradient(to right, #fff, #aaa);
+    letter-spacing: -0.8px;
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
 .lang-selector select {
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(255, 255, 255, 0.8);
     border: 1px solid var(--glass-border);
-    color: white;
+    color: var(--text-color);
     padding: 8px 16px;
     border-radius: 12px;
     outline: none;
     cursor: pointer;
     font-family: inherit;
+    font-weight: 500;
     transition: all 0.3s ease;
 }
 
 .lang-selector select:hover {
     border-color: var(--primary-color);
-    box-shadow: 0 0 10px rgba(0, 210, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(217, 1, 122, 0.1);
 }
 
 .status-card {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(217, 1, 122, 0.05);
     padding: 15px;
     border-radius: 16px;
     margin-bottom: 30px;
     font-size: 0.9rem;
-    color: #888;
+    color: var(--secondary-color);
+    border: 1px solid rgba(217, 1, 122, 0.1);
 }
 
 .button-group {

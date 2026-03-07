@@ -59,8 +59,16 @@ function changeLanguage() {
     // Main screen texts
     document.getElementById('title').innerText = t.title;
     document.getElementById('status-text').innerText = t.status;
-    document.querySelector('#btn-1 .btn-text').innerText = t.btn1;
-    document.querySelector('#btn-2 .btn-text').innerText = t.btn2;
+
+    // Sync button titles with can_frames.json if available
+    if (canData) {
+        if (canData.action1) {
+            document.querySelector('#btn-1 .btn-text').innerText = canData.action1.title[lang];
+        }
+        if (canData.action2) {
+            document.querySelector('#btn-2 .btn-text').innerText = canData.action2.title[lang];
+        }
+    }
 
     // If we are in step screen, update it too
     if (currentActionKey) {
