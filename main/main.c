@@ -24,8 +24,8 @@ extern const uint8_t can_frames_json_start[] asm("_binary_can_frames_json_start"
 extern const uint8_t can_frames_json_end[]   asm("_binary_can_frames_json_end");
 
 /* CAN Config */
-#define CAN_TX_IO 18
-#define CAN_RX_IO 19
+#define TX_GPIO_NUM 18   // GPIO para transmisión CAN
+#define RX_GPIO_NUM 19   // GPIO para recepción CAN
 
 /* Global variables */
 static char current_lang[3] = "es";
@@ -194,7 +194,7 @@ void wifi_init_softap(void) {
 
 /* Initialize CAN (TWAI) Driver */
 void can_init(void) {
-    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(CAN_TX_IO, CAN_RX_IO, TWAI_MODE_NORMAL);
+    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(TX_GPIO_NUM, RX_GPIO_NUM, TWAI_MODE_NORMAL);
     twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS(); // Standard 500kbps for Clio/Vehicle CAN
     twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
