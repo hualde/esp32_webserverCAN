@@ -1,0 +1,18 @@
+[1/10] Performing build step for 'bootloader'
+[1/1] cd /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/bootloader/esp-idf/esptool_py && /home/hualde/.espressif/python_env/idf5.3_py3.10_env/bin/python /home/hualde/esp/v5.3.2/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/bootloader/bootloader.bin
+Bootloader binary size 0x6880 bytes. 0x780 bytes (7%) free.
+[2/10] No install step for 'bootloader'
+[3/10] Completed 'bootloader'
+[4/10] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/main.c.obj
+[5/10] Linking C static library esp-idf/main/libmain.a
+[6/10] Generating ld/sections.ld
+[7/10] Building C object CMakeFiles/esp32_webserver_lang.elf.dir/project_elf_src_esp32.c.obj
+[8/10] Linking CXX executable esp32_webserver_lang.elf
+[9/10] Generating binary image from built executable
+esptool.py v4.11.0
+Creating esp32 image...
+Merged 2 ELF sections
+Successfully created esp32 image.
+Generated /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/esp32_webserver_lang.bin
+[10/10] cd /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/esp-idf/esptool_py && /home/hualde/.espressif/python_env/idf5.3_py3.10_env/bin/python /home/hualde/esp/v5.3.2/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/partition_table/partition-table.bin /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/esp32_webserver_lang.bin
+esp32_webserver_lang.bin binary size 0xc3f40 bytes. Smallest app partition is 0x100000 bytes. 0x3c0c0 bytes (23%) free.

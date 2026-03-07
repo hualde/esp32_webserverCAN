@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Control Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="glass-container">
+        <header>
+            <h1 id="title">Panel de Control ESP32</h1>
+            <div class="lang-selector">
+                <select id="language-select" onchange="changeLanguage()">
+                    <option value="es" selected>Español</option>
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                </select>
+            </div>
+        </header>
+
+        <main>
+            <div class="status-card">
+                <p id="status-text">Dispositivo conectado y listo.</p>
+            </div>
+
+            <div class="button-group">
+                <button id="btn-1" class="action-btn" onclick="handleAction(1)">
+                    <span class="btn-icon">⚡</span>
+                    <span class="btn-text">Acción 1</span>
+                </button>
+                <button id="btn-2" class="action-btn" onclick="handleAction(2)">
+                    <span class="btn-icon">⚙️</span>
+                    <span class="btn-text">Acción 2</span>
+                </button>
+            </div>
+        </main>
+
+        <footer>
+            <p id="footer-text">ESP32 Web Server v5.3.2</p>
+        </footer>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

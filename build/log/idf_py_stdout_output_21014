@@ -1,0 +1,53 @@
+[1/5] cd /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/esp-idf/esptool_py && /home/hualde/.espressif/python_env/idf5.3_py3.10_env/bin/python /home/hualde/esp/v5.3.2/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/partition_table/partition-table.bin /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/esp32_webserver_lang.bin
+esp32_webserver_lang.bin binary size 0x575e0 bytes. Smallest app partition is 0x100000 bytes. 0xa8a20 bytes (66%) free.
+[2/5] Performing build step for 'bootloader'
+[1/1] cd /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/bootloader/esp-idf/esptool_py && /home/hualde/.espressif/python_env/idf5.3_py3.10_env/bin/python /home/hualde/esp/v5.3.2/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/bootloader/bootloader.bin
+Bootloader binary size 0x6880 bytes. 0x780 bytes (7%) free.
+[3/5] No install step for 'bootloader'
+[4/5] Completed 'bootloader'
+[4/5] cd /home/hualde/esp/v5.3.2/esp-idf/components/esptool_py && /usr/bin/cmake -D IDF_PATH=/home/hualde/esp/v5.3.2/esp-idf -D "SERIAL_TOOL=/home/hualde/.espressif/python_env/idf5.3_py3.10_env/bin/python;;/home/hualde/esp/v5.3.2/esp-idf/components/esptool_py/esptool/esptool.py;--chip;esp32" -D "SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args" -D WORKING_DIRECTORY=/home/hualde/misCosas/06964700v2/esp32_webserver_lang/build -P /home/hualde/esp/v5.3.2/esp-idf/components/esptool_py/run_serial_tool.cmake
+esptool.py --chip esp32 -p /dev/ttyUSB0 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 2MB 0x1000 bootloader/bootloader.bin 0x10000 esp32_webserver_lang.bin 0x8000 partition_table/partition-table.bin
+esptool.py v4.11.0
+Serial port /dev/ttyUSB0
+Connecting........................
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: 48:e7:29:8b:11:5c
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x00067fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+SHA digest in image updated
+Compressed 26752 bytes to 16360...
+Writing at 0x00001000... (100 %)
+Wrote 26752 bytes (16360 compressed) at 0x00001000 in 0.9 seconds (effective 250.6 kbit/s)...
+Hash of data verified.
+Compressed 357856 bytes to 197591...
+Writing at 0x00010000... (7 %)
+Writing at 0x0001c975... (15 %)
+Writing at 0x00026ba1... (23 %)
+Writing at 0x0002c9bd... (30 %)
+Writing at 0x00032d5d... (38 %)
+Writing at 0x00038a4d... (46 %)
+Writing at 0x0003e5f3... (53 %)
+Writing at 0x00043ddc... (61 %)
+Writing at 0x000499df... (69 %)
+Writing at 0x0004f502... (76 %)
+Writing at 0x00055857... (84 %)
+Writing at 0x0005f58e... (92 %)
+Writing at 0x00066f91... (100 %)
+Wrote 357856 bytes (197591 compressed) at 0x00010000 in 4.6 seconds (effective 619.8 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 103...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (103 compressed) at 0x00008000 in 0.1 seconds (effective 416.3 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...
