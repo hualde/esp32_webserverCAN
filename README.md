@@ -64,4 +64,4 @@ Para cambiar las tramas que se envían al pulsar los botones, edita el archivo `
 *   `delay_ms`: Pausa tras enviar la trama actual.
 
 ---
-Desarrollado para integración en sistemas de diagnosis y control vehicular.
+Desarrollado para integración en sistemas de diagnosis.

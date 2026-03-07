@@ -28,6 +28,16 @@ const translations = {
         next: "Étape Suivante",
         finish: "Terminer",
         completed: "Action terminée!"
+    },
+    de: {
+        title: "ESP32 Kontrollpanel",
+        status: "Gerät verbunden und bereit.",
+        btn1: "Aktion 1",
+        btn2: "Aktion 2",
+        footer: "ESP32 Web Server v5.3.2",
+        next: "Nächster Schritt",
+        finish: "Abschließen",
+        completed: "Aktion abgeschlossen!"
     }
 };
 

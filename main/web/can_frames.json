@@ -3,14 +3,16 @@
         "title": {
             "es": "Calibración de Topes",
             "en": "Stop Calibration",
-            "fr": "Calibrage des Butées"
+            "fr": "Calibrage des Butées",
+            "de": "Anschlagkalibrierung"
         },
         "steps": [
             {
                 "description": {
                     "es": "Paso 1: Iniciando sesión de diagnóstico",
                     "en": "Step 1: Starting diagnostic session",
-                    "fr": "Étape 1: Démarrer la session de diagnostic"
+                    "fr": "Étape 1: Démarrer la session de diagnostic",
+                    "de": "Schritt 1: Diagnose-Sitzung starten"
                 },
                 "frames": [
                     {
@@ -34,7 +36,8 @@
                 "description": {
                     "es": "Paso 2: Solicitando acceso de seguridad",
                     "en": "Step 2: Requesting security access",
-                    "fr": "Étape 2: Demander l'accès de sécurité"
+                    "fr": "Étape 2: Demander l'accès de seguridad",
+                    "de": "Schritt 2: Sicherheitszugriff anfordern"
                 },
                 "frames": [
                     {
@@ -58,7 +61,8 @@
                 "description": {
                     "es": "Paso 3: Ejecutando calibración final",
                     "en": "Step 3: Running final calibration",
-                    "fr": "Étape 3: Exécution du calibrage final"
+                    "fr": "Étape 3: Exécution du calibrage final",
+                    "de": "Schritt 3: Endkalibrierung wird ausgeführt"
                 },
                 "frames": [
                     {
@@ -84,14 +88,16 @@
         "title": {
             "es": "Ajuste de Parámetros",
             "en": "Parameter Adjustment",
-            "fr": "Ajustement des Paramètres"
+            "fr": "Ajustement des Paramètres",
+            "de": "Parametereinstellung"
         },
         "steps": [
             {
                 "description": {
                     "es": "Paso 1: Lectura de configuración actual",
                     "en": "Step 1: Reading current configuration",
-                    "fr": "Étape 1: Lecture de la configuration actuelle"
+                    "fr": "Étape 1: Lecture de la configuration actuelle",
+                    "de": "Schritt 1: Aktuelle Konfiguration lesen"
                 },
                 "frames": [
                     {
@@ -115,7 +121,8 @@
                 "description": {
                     "es": "Paso 2: Escritura de nuevos valores",
                     "en": "Step 2: Writing new values",
-                    "fr": "Étape 2: Écriture de nouvelles valeurs"
+                    "fr": "Étape 2: Écriture de nouvelles valeurs",
+                    "de": "Schritt 2: Neue Werte werden geschrieben"
                 },
                 "frames": [
                     {
