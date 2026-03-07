@@ -1,0 +1,72 @@
+[1/5] cd /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/esp-idf/esptool_py && /home/hualde/.espressif/python_env/idf5.3_py3.10_env/bin/python /home/hualde/esp/v5.3.2/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/partition_table/partition-table.bin /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/esp32_webserver_lang.bin
+esp32_webserver_lang.bin binary size 0xcbf60 bytes. Smallest app partition is 0x100000 bytes. 0x340a0 bytes (20%) free.
+[2/5] Performing build step for 'bootloader'
+[1/1] cd /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/bootloader/esp-idf/esptool_py && /home/hualde/.espressif/python_env/idf5.3_py3.10_env/bin/python /home/hualde/esp/v5.3.2/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 /home/hualde/misCosas/06964700v2/esp32_webserver_lang/build/bootloader/bootloader.bin
+Bootloader binary size 0x6880 bytes. 0x780 bytes (7%) free.
+[3/5] No install step for 'bootloader'
+[4/5] Completed 'bootloader'
+[4/5] cd /home/hualde/esp/v5.3.2/esp-idf/components/esptool_py && /usr/bin/cmake -D IDF_PATH=/home/hualde/esp/v5.3.2/esp-idf -D "SERIAL_TOOL=/home/hualde/.espressif/python_env/idf5.3_py3.10_env/bin/python;;/home/hualde/esp/v5.3.2/esp-idf/components/esptool_py/esptool/esptool.py;--chip;esp32" -D "SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args" -D WORKING_DIRECTORY=/home/hualde/misCosas/06964700v2/esp32_webserver_lang/build -P /home/hualde/esp/v5.3.2/esp-idf/components/esptool_py/run_serial_tool.cmake
+esptool.py --chip esp32 -p /dev/ttyUSB0 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 2MB 0x1000 bootloader/bootloader.bin 0x10000 esp32_webserver_lang.bin 0x8000 partition_table/partition-table.bin
+esptool.py v4.11.0
+Serial port /dev/ttyUSB0
+Connecting.....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: 48:e7:29:8b:11:5c
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x000dbfff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+SHA digest in image updated
+Compressed 26752 bytes to 16360...
+Writing at 0x00001000... (100 %)
+Wrote 26752 bytes (16360 compressed) at 0x00001000 in 0.9 seconds (effective 249.7 kbit/s)...
+Hash of data verified.
+Compressed 835424 bytes to 516849...
+Writing at 0x00010000... (3 %)
+Writing at 0x0001cf28... (6 %)
+Writing at 0x00027bf3... (9 %)
+Writing at 0x000314ed... (12 %)
+Writing at 0x00036cf2... (15 %)
+Writing at 0x0003cf46... (18 %)
+Writing at 0x00042b4b... (21 %)
+Writing at 0x00048bd6... (25 %)
+Writing at 0x0004e56d... (28 %)
+Writing at 0x000547ee... (31 %)
+Writing at 0x00059a5a... (34 %)
+Writing at 0x0005edcd... (37 %)
+Writing at 0x000646f0... (40 %)
+Writing at 0x00069d1b... (43 %)
+Writing at 0x0006f090... (46 %)
+Writing at 0x0007479f... (50 %)
+Writing at 0x0007a746... (53 %)
+Writing at 0x0007ff8e... (56 %)
+Writing at 0x00085c95... (59 %)
+Writing at 0x0008b98f... (62 %)
+Writing at 0x000911d5... (65 %)
+Writing at 0x00096c37... (68 %)
+Writing at 0x0009cb20... (71 %)
+Writing at 0x000a2d93... (75 %)
+Writing at 0x000a86c5... (78 %)
+Writing at 0x000b01e9... (81 %)
+Writing at 0x000b9d9d... (84 %)
+Writing at 0x000bf8e6... (87 %)
+Writing at 0x000c7c3b... (90 %)
+Writing at 0x000cd7a9... (93 %)
+Writing at 0x000d3ada... (96 %)
+Writing at 0x000d8da0... (100 %)
+Wrote 835424 bytes (516849 compressed) at 0x00010000 in 11.7 seconds (effective 570.1 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 103...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (103 compressed) at 0x00008000 in 0.1 seconds (effective 332.0 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...

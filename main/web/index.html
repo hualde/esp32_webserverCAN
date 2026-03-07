@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,35 +10,64 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div class="glass-container">
-        <header>
-            <h1 id="title">Panel de Control ESP32</h1>
-            <div class="lang-selector">
-                <select id="language-select" onchange="changeLanguage()">
-                    <option value="es" selected>Español</option>
-                    <option value="en">English</option>
-                    <option value="fr">Français</option>
-                </select>
-            </div>
-        </header>
+        <!-- Main Screen -->
+        <div id="main-screen">
+            <header>
+                <h1 id="title">Panel de Control ESP32</h1>
+                <div class="lang-selector">
+                    <select id="language-select" onchange="changeLanguage()">
+                        <option value="es" selected>Español</option>
+                        <option value="en">English</option>
+                        <option value="fr">Français</option>
+                    </select>
+                </div>
+            </header>
 
-        <main>
-            <div class="status-card">
-                <p id="status-text">Dispositivo conectado y listo.</p>
-            </div>
+            <main>
+                <div class="status-card">
+                    <p id="status-text">Dispositivo conectado y listo.</p>
+                </div>
 
-            <div class="button-group">
-                <button id="btn-1" class="action-btn" onclick="handleAction(1)">
-                    <span class="btn-icon">⚡</span>
-                    <span class="btn-text">Acción 1</span>
-                </button>
-                <button id="btn-2" class="action-btn" onclick="handleAction(2)">
-                    <span class="btn-icon">⚙️</span>
-                    <span class="btn-text">Acción 2</span>
-                </button>
+                <div class="button-group">
+                    <button id="btn-1" class="action-btn" onclick="startAction('action1')">
+                        <span class="btn-icon">⚡</span>
+                        <span class="btn-text">Acción 1</span>
+                    </button>
+                    <button id="btn-2" class="action-btn" onclick="startAction('action2')">
+                        <span class="btn-icon">⚙️</span>
+                        <span class="btn-text">Acción 2</span>
+                    </button>
+                </div>
+            </main>
+        </div>
+
+        <!-- Step Screen -->
+        <div id="step-screen" class="hidden">
+            <header>
+                <button class="back-btn" onclick="showMainScreen()">←</button>
+                <h2 id="step-action-title">Título Acción</h2>
+            </header>
+
+            <div class="step-content">
+                <div class="step-indicator">
+                    <span id="current-step-num">1</span>/<span id="total-steps-num">3</span>
+                </div>
+                <p id="step-description">Descripción del paso...</p>
+
+                <div class="progress-bar">
+                    <div id="progress-inner"></div>
+                </div>
+
+                <div class="control-group">
+                    <button id="next-step-btn" class="primary-btn" onclick="executeStep()">
+                        Siguiente Paso
+                    </button>
+                </div>
             </div>
-        </main>
+        </div>
 
         <footer>
             <p id="footer-text">ESP32 Web Server v5.3.2</p>
@@ -45,4 +75,5 @@
     </div>
     <script src="script.js"></script>
 </body>
+
 </html>

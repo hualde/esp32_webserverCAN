@@ -1,24 +1,140 @@
 {
-    "action1": [
-        {
-            "id": 1861,
-            "data": [2, 16, 192, 0, 0, 0, 0, 0],
-            "dlc": 8,
-            "delay_ms": 100
+    "action1": {
+        "title": {
+            "es": "Calibración de Topes",
+            "en": "Stop Calibration",
+            "fr": "Calibrage des Butées"
         },
-        {
-            "id": 1861,
-            "data": [2, 62, 1, 0, 0, 0, 0, 0],
-            "dlc": 8,
-            "delay_ms": 50
-        }
-    ],
-    "action2": [
-        {
-            "id": 1893,
-            "data": [2, 16, 194, 0, 0, 0, 0, 0],
-            "dlc": 8,
-            "delay_ms": 200
-        }
-    ]
+        "steps": [
+            {
+                "description": {
+                    "es": "Paso 1: Iniciando sesión de diagnóstico",
+                    "en": "Step 1: Starting diagnostic session",
+                    "fr": "Étape 1: Démarrer la session de diagnostic"
+                },
+                "frames": [
+                    {
+                        "id": 1861,
+                        "data": [
+                            2,
+                            16,
+                            192,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "dlc": 8,
+                        "delay_ms": 50
+                    }
+                ]
+            },
+            {
+                "description": {
+                    "es": "Paso 2: Solicitando acceso de seguridad",
+                    "en": "Step 2: Requesting security access",
+                    "fr": "Étape 2: Demander l'accès de sécurité"
+                },
+                "frames": [
+                    {
+                        "id": 1861,
+                        "data": [
+                            2,
+                            39,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "dlc": 8,
+                        "delay_ms": 50
+                    }
+                ]
+            },
+            {
+                "description": {
+                    "es": "Paso 3: Ejecutando calibración final",
+                    "en": "Step 3: Running final calibration",
+                    "fr": "Étape 3: Exécution du calibrage final"
+                },
+                "frames": [
+                    {
+                        "id": 1861,
+                        "data": [
+                            2,
+                            31,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "dlc": 8,
+                        "delay_ms": 50
+                    }
+                ]
+            }
+        ]
+    },
+    "action2": {
+        "title": {
+            "es": "Ajuste de Parámetros",
+            "en": "Parameter Adjustment",
+            "fr": "Ajustement des Paramètres"
+        },
+        "steps": [
+            {
+                "description": {
+                    "es": "Paso 1: Lectura de configuración actual",
+                    "en": "Step 1: Reading current configuration",
+                    "fr": "Étape 1: Lecture de la configuration actuelle"
+                },
+                "frames": [
+                    {
+                        "id": 1893,
+                        "data": [
+                            3,
+                            34,
+                            1,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "dlc": 8,
+                        "delay_ms": 100
+                    }
+                ]
+            },
+            {
+                "description": {
+                    "es": "Paso 2: Escritura de nuevos valores",
+                    "en": "Step 2: Writing new values",
+                    "fr": "Étape 2: Écriture de nouvelles valeurs"
+                },
+                "frames": [
+                    {
+                        "id": 1893,
+                        "data": [
+                            4,
+                            46,
+                            1,
+                            1,
+                            235,
+                            0,
+                            0,
+                            0
+                        ],
+                        "dlc": 8,
+                        "delay_ms": 100
+                    }
+                ]
+            }
+        ]
+    }
 }

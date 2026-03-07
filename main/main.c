@@ -31,7 +31,7 @@ extern const uint8_t can_frames_json_end[]   asm("_binary_can_frames_json_end");
 static char current_lang[3] = "es";
 
 /* CAN Transmission Logic */
-static void transmit_can_sequence(const char *action_key) {
+static void transmit_can_step(const char *action_key, int step_idx) {
     const char *json_data = (const char *)can_frames_json_start;
     cJSON *root = cJSON_ParseWithLength(json_data, can_frames_json_end - can_frames_json_start);
     if (!root) {
@@ -39,31 +39,41 @@ static void transmit_can_sequence(const char *action_key) {
         return;
     }
 
-    cJSON *action_array = cJSON_GetObjectItem(root, action_key);
-    if (cJSON_IsArray(action_array)) {
-        int array_size = cJSON_GetArraySize(action_array);
-        for (int i = 0; i < array_size; i++) {
-            cJSON *frame_obj = cJSON_GetArrayItem(action_array, i);
-            uint32_t id = cJSON_GetObjectItem(frame_obj, "id")->valueint;
-            cJSON *data_arr = cJSON_GetObjectItem(frame_obj, "data");
-            uint8_t dlc = cJSON_GetObjectItem(frame_obj, "dlc")->valueint;
-            int delay = cJSON_GetObjectItem(frame_obj, "delay_ms")->valueint;
+    cJSON *action_obj = cJSON_GetObjectItem(root, action_key);
+    if (action_obj) {
+        cJSON *steps_array = cJSON_GetObjectItem(action_obj, "steps");
+        if (cJSON_IsArray(steps_array) && step_idx < cJSON_GetArraySize(steps_array)) {
+            cJSON *step_obj = cJSON_GetArrayItem(steps_array, step_idx);
+            cJSON *frames_array = cJSON_GetObjectItem(step_obj, "frames");
+            
+            if (cJSON_IsArray(frames_array)) {
+                int frames_count = cJSON_GetArraySize(frames_array);
+                ESP_LOGI(TAG, "Ejecutando %s - Paso %d (%d tramas)", action_key, step_idx + 1, frames_count);
+                
+                for (int i = 0; i < frames_count; i++) {
+                    cJSON *frame_obj = cJSON_GetArrayItem(frames_array, i);
+                    uint32_t id = cJSON_GetObjectItem(frame_obj, "id")->valueint;
+                    cJSON *data_arr = cJSON_GetObjectItem(frame_obj, "data");
+                    uint8_t dlc = cJSON_GetObjectItem(frame_obj, "dlc")->valueint;
+                    int delay = cJSON_GetObjectItem(frame_obj, "delay_ms")->valueint;
 
-            twai_message_t message;
-            message.identifier = id;
-            message.extd = 0;
-            message.data_length_code = dlc;
-            for (int j = 0; j < dlc && j < 8; j++) {
-                message.data[j] = cJSON_GetArrayItem(data_arr, j)->valueint;
+                    twai_message_t message;
+                    message.identifier = id;
+                    message.extd = 0;
+                    message.data_length_code = dlc;
+                    for (int j = 0; j < dlc && j < 8; j++) {
+                        message.data[j] = cJSON_GetArrayItem(data_arr, j)->valueint;
+                    }
+
+                    if (twai_transmit(&message, pdMS_TO_TICKS(100)) == ESP_OK) {
+                        ESP_LOGI(TAG, "  -> CAN Transmit: ID 0x%03lX", id);
+                    } else {
+                        ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03lX", id);
+                    }
+
+                    if (delay > 0) vTaskDelay(pdMS_TO_TICKS(delay));
+                }
             }
-
-            if (twai_transmit(&message, pdMS_TO_TICKS(100)) == ESP_OK) {
-                ESP_LOGI(TAG, "CAN Transmit: ID 0x%03lX", id);
-            } else {
-                ESP_LOGE(TAG, "Failed to transmit CAN frame 0x%03lX", id);
-            }
-
-            if (delay > 0) vTaskDelay(pdMS_TO_TICKS(delay));
         }
     }
     cJSON_Delete(root);
@@ -92,18 +102,27 @@ static esp_err_t script_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-// Handle API Action 1
-static esp_err_t action1_post_handler(httpd_req_t *req) {
-    ESP_LOGI(TAG, "Acción 1 ejecutada (Idioma: %s) -> Lanzando tramas CAN", current_lang);
-    transmit_can_sequence("action1");
-    httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+// Serve can_frames.json
+static esp_err_t step_json_get_handler(httpd_req_t *req) {
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, (const char *)can_frames_json_start, can_frames_json_end - can_frames_json_start);
     return ESP_OK;
 }
 
-// Handle API Action 2
-static esp_err_t action2_post_handler(httpd_req_t *req) {
-    ESP_LOGI(TAG, "Acción 2 ejecutada (Idioma: %s) -> Lanzando tramas CAN", current_lang);
-    transmit_can_sequence("action2");
+// Handle API Execute Step (Parameters: action, step)
+static esp_err_t execute_step_post_handler(httpd_req_t *req) {
+    char buf[128];
+    int ret = httpd_req_get_url_query_str(req, buf, sizeof(buf));
+    if (ret == ESP_OK) {
+        char action[32];
+        char step_str[10];
+        if (httpd_query_key_value(buf, "action", action, sizeof(action)) == ESP_OK &&
+            httpd_query_key_value(buf, "step", step_str, sizeof(step_str)) == ESP_OK) {
+            
+            int step_idx = atoi(step_str);
+            transmit_can_step(action, step_idx);
+        }
+    }
     httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
@@ -128,8 +147,8 @@ static esp_err_t set_lang_post_handler(httpd_req_t *req) {
 static const httpd_uri_t index_uri = { .uri = "/", .method = HTTP_GET, .handler = index_get_handler };
 static const httpd_uri_t style_uri = { .uri = "/style.css", .method = HTTP_GET, .handler = style_get_handler };
 static const httpd_uri_t script_uri = { .uri = "/script.js", .method = HTTP_GET, .handler = script_get_handler };
-static const httpd_uri_t action1_uri = { .uri = "/api/action1", .method = HTTP_POST, .handler = action1_post_handler };
-static const httpd_uri_t action2_uri = { .uri = "/api/action2", .method = HTTP_POST, .handler = action2_post_handler };
+static const httpd_uri_t step_json_uri = { .uri = "/can_frames.json", .method = HTTP_GET, .handler = step_json_get_handler };
+static const httpd_uri_t execute_step_uri = { .uri = "/api/execute_step", .method = HTTP_POST, .handler = execute_step_post_handler };
 static const httpd_uri_t set_lang_uri = { .uri = "/api/set_lang", .method = HTTP_POST, .handler = set_lang_post_handler };
 
 /* Start Web Server */
@@ -142,8 +161,8 @@ static httpd_handle_t start_webserver(void) {
         httpd_register_uri_handler(server, &index_uri);
         httpd_register_uri_handler(server, &style_uri);
         httpd_register_uri_handler(server, &script_uri);
-        httpd_register_uri_handler(server, &action1_uri);
-        httpd_register_uri_handler(server, &action2_uri);
+        httpd_register_uri_handler(server, &step_json_uri);
+        httpd_register_uri_handler(server, &execute_step_uri);
         httpd_register_uri_handler(server, &set_lang_uri);
         ESP_LOGI(TAG, "Web server iniciado en puerto %d", config.server_port);
         return server;

@@ -4,67 +4,149 @@ const translations = {
         status: "Dispositivo conectado y listo.",
         btn1: "Acción 1",
         btn2: "Acción 2",
-        footer: "Servidor Web ESP32 v5.3.2"
+        footer: "Servidor Web ESP32 v5.3.2",
+        next: "Siguiente Paso",
+        finish: "Finalizar",
+        completed: "¡Acción completada!"
     },
     en: {
         title: "ESP32 Control Panel",
         status: "Device connected and ready.",
         btn1: "Action 1",
         btn2: "Action 2",
-        footer: "ESP32 Web Server v5.3.2"
+        footer: "ESP32 Web Server v5.3.2",
+        next: "Next Step",
+        finish: "Finish",
+        completed: "Action completed!"
     },
     fr: {
         title: "Tableau de Bord ESP32",
-        status: "Appareil connecté et prêt.",
+        status: "Appareil conectado y listo.",
         btn1: "Action 1",
         btn2: "Action 2",
-        footer: "Serveur Web ESP32 v5.3.2"
+        footer: "Servidor Web ESP32 v5.3.2",
+        next: "Étape Suivante",
+        finish: "Terminer",
+        completed: "Action terminée!"
     }
 };
+
+let canData = null;
+let currentActionKey = null;
+let currentStepIdx = 0;
+
+// Fetch CAN frames/steps on start
+async function loadCanData() {
+    try {
+        const response = await fetch('can_frames.json');
+        canData = await response.json();
+        console.log("CAN Data loaded:", canData);
+    } catch (err) {
+        console.error("Failed to load CAN data", err);
+    }
+}
 
 function changeLanguage() {
     const lang = document.getElementById('language-select').value;
     const t = translations[lang];
 
+    // Main screen texts
     document.getElementById('title').innerText = t.title;
     document.getElementById('status-text').innerText = t.status;
     document.querySelector('#btn-1 .btn-text').innerText = t.btn1;
     document.querySelector('#btn-2 .btn-text').innerText = t.btn2;
     document.getElementById('footer-text').innerText = t.footer;
 
-    // Optional: Notify the ESP32 about language change
-    fetch(`/api/set_lang?lang=${lang}`, { method: 'POST' });
+    // If we are in step screen, update it too
+    if (currentActionKey) {
+        updateStepUI();
+    }
 }
 
-function handleAction(id) {
-    const statusText = document.getElementById('status-text');
+function showMainScreen() {
+    document.getElementById('step-screen').classList.add('hidden');
+    document.getElementById('main-screen').classList.remove('hidden');
+    currentActionKey = null;
+}
+
+function startAction(actionKey) {
+    if (!canData) return;
+    currentActionKey = actionKey;
+    currentStepIdx = 0;
+
+    document.getElementById('main-screen').classList.add('hidden');
+    document.getElementById('step-screen').classList.remove('hidden');
+
+    updateStepUI();
+}
+
+function updateStepUI() {
+    const lang = document.getElementById('language-select').value;
+    const action = canData[currentActionKey];
+    const steps = action.steps;
+    const t = translations[lang];
+
+    document.getElementById('step-action-title').innerText = action.title[lang];
+    document.getElementById('current-step-num').innerText = currentStepIdx + 1;
+    document.getElementById('total-steps-num').innerText = steps.length;
+
+    const step = steps[currentStepIdx];
+    document.getElementById('step-description').innerText = step.description[lang];
+
+    // Progress
+    const progress = (currentStepIdx / steps.length) * 100;
+    document.getElementById('progress-inner').style.width = `${progress}%`;
+
+    // Reset button to default behavior
+    const btn = document.getElementById('next-step-btn');
+    btn.onclick = executeStep;
+    btn.disabled = false;
+
+    if (currentStepIdx === steps.length - 1) {
+        btn.innerText = t.finish;
+    } else {
+        btn.innerText = t.next;
+    }
+}
+
+async function executeStep() {
+    if (!currentActionKey) return;
+
+    const btn = document.getElementById('next-step-btn');
+    btn.disabled = true;
+
+    const action = canData[currentActionKey];
     const lang = document.getElementById('language-select').value;
 
-    const messages = {
-        es: `Ejecutando Acción ${id}...`,
-        en: `Executing Action ${id}...`,
-        fr: `Exécution de l'Action ${id}...`
-    };
-
-    statusText.innerText = messages[lang];
-    statusText.style.color = 'var(--primary-color)';
-
-    fetch(`/api/action${id}`, { method: 'POST' })
-        .then(response => {
-            setTimeout(() => {
-                statusText.innerText = translations[lang].status;
-                statusText.style.color = '#888';
-            }, 2000);
-        })
-        .catch(err => {
-            statusText.innerText = "Error!";
-            statusText.style.color = "#ff4b2b";
+    try {
+        const response = await fetch(`/api/execute_step?action=${currentActionKey}&step=${currentStepIdx}`, {
+            method: 'POST'
         });
+
+        if (response.ok) {
+            if (currentStepIdx < action.steps.length - 1) {
+                currentStepIdx++;
+                setTimeout(() => updateStepUI(), 300);
+            } else {
+                // Final step completed
+                document.getElementById('progress-inner').style.width = `100%`;
+                document.getElementById('step-description').innerText = translations[lang].completed;
+                btn.innerText = translations[lang].finish;
+                btn.disabled = false;
+                btn.onclick = showMainScreen; // Temporary override for final click
+            }
+        } else {
+            alert("Error");
+            btn.disabled = false;
+        }
+    } catch (err) {
+        console.error(err);
+        btn.disabled = false;
+    }
 }
 
-// Initial set (should be ES by default as per HTML)
 document.addEventListener('DOMContentLoaded', () => {
-    // Check if we have a saved language or default to ES
-    // For now just ensure it's synced
-    changeLanguage();
+    loadCanData().then(() => {
+        changeLanguage();
+    });
 });
