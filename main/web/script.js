@@ -2,36 +2,28 @@ const translations = {
     es: {
         title: "Lizarte On! Configurator",
         status: "Dispositivo conectado y listo.",
-        btn1: "Acción 1",
-        btn2: "Acción 2",
-        next: "Siguiente Paso",
+        next: "Ejecutar Paso",
         finish: "Finalizar",
         completed: "¡Acción completada!"
     },
     en: {
         title: "Lizarte On! Configurator",
         status: "Device connected and ready.",
-        btn1: "Action 1",
-        btn2: "Action 2",
-        next: "Next Step",
+        next: "Execute Step",
         finish: "Finish",
         completed: "Action completed!"
     },
     fr: {
         title: "Lizarte On! Configurator",
-        status: "Appareil conectado y listo.",
-        btn1: "Action 1",
-        btn2: "Action 2",
-        next: "Étape Suivante",
+        status: "Appareil connecté y listo.",
+        next: "Exécuter l'étape",
         finish: "Terminer",
         completed: "Action terminée!"
     },
     de: {
         title: "Lizarte On! Configurator",
         status: "Gerät verbunden und bereit.",
-        btn1: "Aktion 1",
-        btn2: "Aktion 2",
-        next: "Nächster Schritt",
+        next: "Schritt ausführen",
         finish: "Abschließen",
         completed: "Aktion abgeschlossen!"
     }

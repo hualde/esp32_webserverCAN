@@ -9,10 +9,10 @@
         "steps": [
             {
                 "description": {
-                    "es": "Paso 1: Iniciando sesión de diagnóstico",
-                    "en": "Step 1: Starting diagnostic session",
-                    "fr": "Étape 1: Démarrer la session de diagnostic",
-                    "de": "Schritt 1: Diagnose-Sitzung starten"
+                    "es": "Paso 1: Iniciando sesión de diagnóstico y desbloqueo",
+                    "en": "Step 1: Starting diagnostic session and unlocking",
+                    "fr": "Étape 1: Démarrer la session de diagnostic et déverrouillage",
+                    "de": "Schritt 1: Diagnose-Sitzung starten und entsperren"
                 },
                 "frames": [
                     {
@@ -29,17 +29,7 @@
                         ],
                         "dlc": 8,
                         "delay_ms": 50
-                    }
-                ]
-            },
-            {
-                "description": {
-                    "es": "Paso 2: Solicitando acceso de seguridad",
-                    "en": "Step 2: Requesting security access",
-                    "fr": "Étape 2: Demander l'accès de seguridad",
-                    "de": "Schritt 2: Sicherheitszugriff anfordern"
-                },
-                "frames": [
+                    },
                     {
                         "id": 1861,
                         "data": [
@@ -54,17 +44,92 @@
                         ],
                         "dlc": 8,
                         "delay_ms": 50
+                    },
+                    {
+                        "id": 1861,
+                        "data": [
+                            4,
+                            39,
+                            2,
+                            1,
+                            2,
+                            0,
+                            0,
+                            0
+                        ],
+                        "dlc": 8,
+                        "delay_ms": 50
+                    },
+                    {
+                        "id": 1861,
+                        "data": [
+                            2,
+                            62,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "dlc": 8,
+                        "delay_ms": 50
                     }
                 ]
             },
             {
                 "description": {
-                    "es": "Paso 3: Ejecutando calibración final",
-                    "en": "Step 3: Running final calibration",
-                    "fr": "Étape 3: Exécution du calibrage final",
-                    "de": "Schritt 3: Endkalibrierung wird ausgeführt"
+                    "es": "Paso 2: Borrado de memoria de fallos",
+                    "en": "Step 2: Clearing fault memory",
+                    "fr": "Étape 2: Effacer la mémoire des défauts",
+                    "de": "Schritt 2: Fehlerspeicher löschen"
                 },
                 "frames": [
+                    {
+                        "id": 1861,
+                        "data": [
+                            4,
+                            20,
+                            255,
+                            255,
+                            255,
+                            0,
+                            0,
+                            0
+                        ],
+                        "dlc": 8,
+                        "delay_ms": 100
+                    },
+                    {
+                        "id": 1861,
+                        "data": [
+                            2,
+                            16,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "dlc": 8,
+                        "delay_ms": 50
+                    },
+                    {
+                        "id": 1861,
+                        "data": [
+                            1,
+                            62,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "dlc": 8,
+                        "delay_ms": 20
+                    },
                     {
                         "id": 1861,
                         "data": [
@@ -94,10 +159,10 @@
         "steps": [
             {
                 "description": {
-                    "es": "Paso 1: Lectura de configuración actual",
-                    "en": "Step 1: Reading current configuration",
-                    "fr": "Étape 1: Lecture de la configuration actuelle",
-                    "de": "Schritt 1: Aktuelle Konfiguration lesen"
+                    "es": "Paso 1: Configuración de Unidad Lizarte",
+                    "en": "Step 1: Lizarte Unit Configuration",
+                    "fr": "Étape 1: Configuration de l'unité Lizarte",
+                    "de": "Schritt 1: Lizarte-Einheitenkonfiguration"
                 },
                 "frames": [
                     {
@@ -114,17 +179,7 @@
                         ],
                         "dlc": 8,
                         "delay_ms": 100
-                    }
-                ]
-            },
-            {
-                "description": {
-                    "es": "Paso 2: Escritura de nuevos valores",
-                    "en": "Step 2: Writing new values",
-                    "fr": "Étape 2: Écriture de nouvelles valeurs",
-                    "de": "Schritt 2: Neue Werte werden geschrieben"
-                },
-                "frames": [
+                    },
                     {
                         "id": 1893,
                         "data": [
@@ -133,6 +188,36 @@
                             1,
                             1,
                             235,
+                            0,
+                            0,
+                            0
+                        ],
+                        "dlc": 8,
+                        "delay_ms": 100
+                    },
+                    {
+                        "id": 1893,
+                        "data": [
+                            2,
+                            16,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "dlc": 8,
+                        "delay_ms": 100
+                    },
+                    {
+                        "id": 1893,
+                        "data": [
+                            1,
+                            62,
+                            0,
+                            0,
+                            0,
                             0,
                             0,
                             0
