@@ -15,8 +15,8 @@ Este proyecto implementa un servidor web moderno en un **ESP32** utilizando **ES
 -   **Framework**: ESP-IDF v5.3.2.
 -   **Hardware**: ESP32 (o variante compatible con TWAI).
 -   **Pines CAN (Configurados por defecto)**:
-    -   **TX**: GPIO 18
-    -   **RX**: GPIO 19
+    -   **TX**: GPIO 17 ---> GPIO17 de esp32 va a SN65HVD Pin TX
+    -   **RX**: GPIO 16 ---> GPIO16 de esp32 va a SN65HVD Pin RX
     -   **Velocidad**: 500 kbps (Estándar de automoción).
 
 ## 📂 Estructura del Proyecto
