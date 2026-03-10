@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "esp_log.h"
 #include "esp_http_server.h"
@@ -30,6 +31,27 @@ extern const uint8_t can_frames_json_end[]   asm("_binary_can_frames_json_end");
 /* Global variables */
 static char current_lang[3] = "es";
 
+/* Parsea un valor que puede ser número (decimal) o string (hex: "0x064", "064", "64") */
+static uint32_t parse_can_id_or_byte(cJSON *item) {
+    if (!item) return 0;
+    if (cJSON_IsNumber(item))
+        return (uint32_t)(item->valueint & 0xFF);
+    if (cJSON_IsString(item) && item->valuestring) {
+        return (uint32_t)strtoul(item->valuestring, NULL, 16);
+    }
+    return 0;
+}
+
+/* Parsea ID CAN: número decimal o string en hex (ej. "0x064", "064") */
+static uint32_t parse_can_id(cJSON *item) {
+    if (!item) return 0;
+    if (cJSON_IsNumber(item))
+        return (uint32_t)(item->valueint & 0x7FF);
+    if (cJSON_IsString(item) && item->valuestring)
+        return (uint32_t)strtoul(item->valuestring, NULL, 16);
+    return 0;
+}
+
 /* CAN Transmission Logic */
 static void transmit_can_step(const char *action_key, int step_idx) {
     const char *json_data = (const char *)can_frames_json_start;
@@ -52,17 +74,21 @@ static void transmit_can_step(const char *action_key, int step_idx) {
                 
                 for (int i = 0; i < frames_count; i++) {
                     cJSON *frame_obj = cJSON_GetArrayItem(frames_array, i);
-                    uint32_t id = cJSON_GetObjectItem(frame_obj, "id")->valueint;
+                    cJSON *id_item = cJSON_GetObjectItem(frame_obj, "id");
+                    uint32_t id = parse_can_id(id_item);
                     cJSON *data_arr = cJSON_GetObjectItem(frame_obj, "data");
-                    uint8_t dlc = cJSON_GetObjectItem(frame_obj, "dlc")->valueint;
+                    uint8_t dlc = (uint8_t)(cJSON_GetObjectItem(frame_obj, "dlc")->valueint & 0x0F);
                     int delay = cJSON_GetObjectItem(frame_obj, "delay_ms")->valueint;
 
                     twai_message_t message;
+                    memset(&message, 0, sizeof(message));
                     message.identifier = id;
                     message.extd = 0;
+                    message.rtr = 0;   /* 0 = data frame (con payload); 1 = RTR (sin datos) */
                     message.data_length_code = dlc;
                     for (int j = 0; j < dlc && j < 8; j++) {
-                        message.data[j] = cJSON_GetArrayItem(data_arr, j)->valueint;
+                        cJSON *item = cJSON_GetArrayItem(data_arr, j);
+                        message.data[j] = (uint8_t)parse_can_id_or_byte(item);
                     }
 
                     if (twai_transmit(&message, pdMS_TO_TICKS(100)) == ESP_OK) {

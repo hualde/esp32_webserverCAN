@@ -49,19 +49,23 @@ Para cambiar las tramas que se envían al pulsar los botones, edita el archivo `
 
 ```json
 {
-    "action1": [
-        {
-            "id": 1861,
-            "data": [2, 16, 192, 0, 0, 0, 0, 0],
-            "dlc": 8,
-            "delay_ms": 100
-        }
-    ]
+    "action1": {
+        "steps": [{
+            "frames": [
+                {
+                    "id": "0x064",
+                    "data": ["0x02", "0x10", "0xC0", 0, 0, 0, 0, 0],
+                    "dlc": 8,
+                    "delay_ms": 100
+                }
+            ]
+        }]
+    }
 }
 ```
-*   `id`: Identificador de la trama (en decimal. Ejemplo: 1861 es `0x745`).
-*   `data`: Array de 8 bytes con los datos.
-*   `delay_ms`: Pausa tras enviar la trama actual.
+*   `id`: ID CAN en **decimal** (ej. `100`) o en **hex** como string (ej. `"0x064"`, `"064"`) — puedes copiar los IDs del sniffer.
+*   `data`: Bytes en decimal o en hex como string (ej. `"0x02"`, `"0xC0"`).
+*   `delay_ms`: Pausa en ms tras enviar la trama.
 
 ---
 Desarrollado para integración en sistemas de diagnosis.
