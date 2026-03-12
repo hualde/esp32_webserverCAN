@@ -210,7 +210,7 @@ static void transmit_can_step(const char *action_key, int step_idx) {
 }
 
 static esp_err_t last_rx_get_handler(httpd_req_t *req) {
-    char resp[64];
+    char resp[192];
     if (last_rx_valid) {
         snprintf(resp, sizeof(resp), "{\"valid\":true,\"key\":\"%s\"}", last_rx_line);
     } else {
