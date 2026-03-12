@@ -117,6 +117,31 @@ static void send_key_response(uint32_t key) {
     }
 }
 
+static bool send_seed_request_frame(void) {
+    twai_message_t message;
+    memset(&message, 0, sizeof(message));
+    message.identifier = SEED_REQUEST_ID;
+    message.extd = 0;
+    message.rtr = 0;
+    message.data_length_code = 8;
+    message.data[0] = 0x02;
+    message.data[1] = 0x27;
+    message.data[2] = 0x03;
+    message.data[3] = 0xFF;
+    message.data[4] = 0xFF;
+    message.data[5] = 0xFF;
+    message.data[6] = 0xFF;
+    message.data[7] = 0xFF;
+
+    if (twai_transmit(&message, pdMS_TO_TICKS(100)) == ESP_OK) {
+        ESP_LOGI(TAG, "  -> CAN Transmit (fallback): ID 0x%03X", SEED_REQUEST_ID);
+        return true;
+    }
+
+    ESP_LOGE(TAG, "  !! Failed to transmit seed request 0x%03X", SEED_REQUEST_ID);
+    return false;
+}
+
 /* Parsea un valor que puede ser número (decimal) o string (hex: "0x064", "064", "64") */
 static uint32_t parse_can_id_or_byte(cJSON *item) {
     if (!item) return 0;
@@ -158,6 +183,7 @@ static void transmit_can_step(const char *action_key, int step_idx) {
                 int frames_count = cJSON_GetArraySize(frames_array);
                 ESP_LOGI(TAG, "Ejecutando %s - Paso %d (%d tramas)", action_key, step_idx + 1, frames_count);
                 
+                bool seed_request_tx_ok = false;
                 for (int i = 0; i < frames_count; i++) {
                     cJSON *frame_obj = cJSON_GetArrayItem(frames_array, i);
                     cJSON *id_item = cJSON_GetObjectItem(frame_obj, "id");
@@ -177,7 +203,8 @@ static void transmit_can_step(const char *action_key, int step_idx) {
                         message.data[j] = (uint8_t)parse_can_id_or_byte(item);
                     }
 
-                    if (twai_transmit(&message, pdMS_TO_TICKS(100)) == ESP_OK) {
+                    bool tx_ok = (twai_transmit(&message, pdMS_TO_TICKS(100)) == ESP_OK);
+                    if (tx_ok) {
                         ESP_LOGI(TAG, "  -> CAN Transmit: ID 0x%03lX", id);
                     } else {
                         ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03lX", id);
@@ -187,6 +214,18 @@ static void transmit_can_step(const char *action_key, int step_idx) {
                         id == SEED_REQUEST_ID && dlc >= 3 &&
                         message.data[0] == 0x02 && message.data[1] == 0x27 &&
                         message.data[2] == 0x03) {
+                        seed_request_tx_ok = tx_ok;
+                    }
+
+                    if (delay > 0) vTaskDelay(pdMS_TO_TICKS(delay));
+                }
+
+                if (strcmp(action_key, "action1") == 0 && step_idx == 0) {
+                    if (!seed_request_tx_ok) {
+                        seed_request_tx_ok = send_seed_request_frame();
+                    }
+
+                    if (seed_request_tx_ok) {
                         last_rx_valid = false;
                         uint32_t seed = 0;
                         if (wait_for_seed_response(&seed)) {
@@ -200,8 +239,6 @@ static void transmit_can_step(const char *action_key, int step_idx) {
                             ESP_LOGE(TAG, "  !! Timeout esperando seed 0x%03X", SEED_RESPONSE_ID);
                         }
                     }
-
-                    if (delay > 0) vTaskDelay(pdMS_TO_TICKS(delay));
                 }
             }
         }
