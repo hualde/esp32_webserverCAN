@@ -98,6 +98,15 @@ function updateStepUI() {
     const step = steps[currentStepIdx];
     document.getElementById('step-description').innerText = step.description[lang];
 
+    const debugCard = document.getElementById('key-debug');
+    if (debugCard) {
+        if (currentActionKey === 'action1' && currentStepIdx === 0) {
+            refreshKeyDebug();
+        } else {
+            debugCard.classList.add('hidden');
+        }
+    }
+
     // Progress
     const progress = (currentStepIdx / steps.length) * 100;
     document.getElementById('progress-inner').style.width = `${progress}%`;
@@ -111,6 +120,27 @@ function updateStepUI() {
         btn.innerText = t.finish;
     } else {
         btn.innerText = t.next;
+    }
+}
+
+async function refreshKeyDebug() {
+    const debugCard = document.getElementById('key-debug');
+    const debugValue = document.getElementById('key-debug-value');
+    if (!debugCard || !debugValue) return;
+
+    try {
+        const response = await fetch('/api/last_key');
+        if (!response.ok) throw new Error('Bad response');
+        const data = await response.json();
+        if (data.valid) {
+            debugValue.innerText = data.key;
+            debugCard.classList.remove('hidden');
+        } else {
+            debugValue.innerText = '---';
+            debugCard.classList.add('hidden');
+        }
+    } catch (err) {
+        debugCard.classList.add('hidden');
     }
 }
 
@@ -129,6 +159,7 @@ async function executeStep() {
         });
 
         if (response.ok) {
+            refreshKeyDebug();
             if (currentStepIdx < action.steps.length - 1) {
                 currentStepIdx++;
                 setTimeout(() => updateStepUI(), 300);
