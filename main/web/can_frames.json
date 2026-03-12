@@ -1,7 +1,7 @@
 {
     "action1": {
         "title": {
-            "es": "Calibración de Topes",
+            "es": "Codificación",
             "en": "Stop Calibration",
             "fr": "Calibrage des Butées",
             "de": "Anschlagkalibrierung"
@@ -17,21 +17,21 @@
                 "frames": [
                     {
                         "id": "712",
-                        "data": ["0x03", "0x22", "0x06", "0x06", "0xFF", "0xFF", "0xFF", "0xFF"],
+                        "data": ["0x02", "0x3E", "0x00", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF"],
                         "dlc": 8,
                         "delay_ms": 50
                     },
                     {
-                        "id": "77C",
-                        "data": ["0x02", "0x27", "0x01", "0x00", "0x00", "0x00", "0x00", "0x00"],
+                        "id": "712",
+                        "data": ["0x02", "0x10", "0x03", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF"],
                         "dlc": 8,
                         "delay_ms": 50
                     },
                     {
-                        "id": "78",
-                        "data": ["0x04", "0x27", "0x02", "0x01", "0x02", "0x00", "0x00", "0x00"],
+                        "id": "712",
+                        "data": ["0x04", "0x14", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF"],
                         "dlc": 8,
-                        "delay_ms": 50
+                        "delay_ms": 100
                     },
                     {
                         "id": "82",
