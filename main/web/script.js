@@ -129,7 +129,7 @@ async function refreshKeyDebug() {
     if (!debugCard || !debugValue) return;
 
     try {
-        const response = await fetch('/api/last_key');
+        const response = await fetch('/api/last_rx');
         if (!response.ok) throw new Error('Bad response');
         const data = await response.json();
         if (data.valid) {

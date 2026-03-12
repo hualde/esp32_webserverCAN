@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include "esp_timer.h"
 #include "esp_log.h"
 #include "esp_http_server.h"
 #include "esp_wifi.h"
@@ -31,14 +32,15 @@ extern const uint8_t can_frames_json_end[]   asm("_binary_can_frames_json_end");
 
 /* Global variables */
 static char current_lang[3] = "es";
-static bool last_key_valid = false;
-static char last_key_hex[12] = {0};
+static bool last_rx_valid = false;
+static char last_rx_line[128] = {0};
 
 /* Seguridad UDS: desbloqueo por seed/key */
 #define SEED_REQUEST_ID 0x712
 #define SEED_RESPONSE_ID 0x77C
 #define SEED_ADDEND 0x4B31u
 #define SEED_RESPONSE_TIMEOUT_MS 500
+#define KEY_RESPONSE_TIMEOUT_MS 500
 
 static bool wait_for_seed_response(uint32_t *seed_out) {
     if (!seed_out) return false;
@@ -56,6 +58,31 @@ static bool wait_for_seed_response(uint32_t *seed_out) {
                             ((uint32_t)rx_msg.data[4] << 16) |
                             ((uint32_t)rx_msg.data[5] << 8)  |
                             ((uint32_t)rx_msg.data[6]);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+static bool wait_for_key_response(void) {
+    twai_message_t rx_msg;
+    TickType_t start = xTaskGetTickCount();
+    TickType_t timeout = pdMS_TO_TICKS(KEY_RESPONSE_TIMEOUT_MS);
+
+    while ((xTaskGetTickCount() - start) < timeout) {
+        if (twai_receive(&rx_msg, pdMS_TO_TICKS(20)) == ESP_OK) {
+            if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                rx_msg.data_length_code >= 3 &&
+                rx_msg.data[1] == 0x67 &&
+                rx_msg.data[2] == 0x04) {
+                snprintf(last_rx_line, sizeof(last_rx_line),
+                         "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
+                         (unsigned long)rx_msg.identifier,
+                         rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
+                         rx_msg.data[4], rx_msg.data[5], rx_msg.data[6],
+                         (rx_msg.data_length_code > 7 ? rx_msg.data[7] : 0x00));
+                last_rx_valid = true;
                 return true;
             }
         }
@@ -82,9 +109,6 @@ static void send_key_response(uint32_t key) {
     message.data[5] = k3;
     message.data[6] = k4;
     message.data[7] = 0xFF;
-
-    snprintf(last_key_hex, sizeof(last_key_hex), "%02X %02X %02X %02X", k1, k2, k3, k4);
-    last_key_valid = true;
 
     if (twai_transmit(&message, pdMS_TO_TICKS(100)) == ESP_OK) {
         ESP_LOGI(TAG, "  -> CAN Transmit Key: ID 0x%03X", SEED_REQUEST_ID);
@@ -163,12 +187,15 @@ static void transmit_can_step(const char *action_key, int step_idx) {
                         id == SEED_REQUEST_ID && dlc >= 3 &&
                         message.data[0] == 0x02 && message.data[1] == 0x27 &&
                         message.data[2] == 0x03) {
-                        last_key_valid = false;
+                        last_rx_valid = false;
                         uint32_t seed = 0;
                         if (wait_for_seed_response(&seed)) {
                             uint32_t key = seed + SEED_ADDEND;
                             ESP_LOGI(TAG, "  <- Seed 0x%08lX, Key 0x%08lX", seed, key);
                             send_key_response(key);
+                            if (!wait_for_key_response()) {
+                                ESP_LOGE(TAG, "  !! Timeout esperando respuesta 0x67 0x04");
+                            }
                         } else {
                             ESP_LOGE(TAG, "  !! Timeout esperando seed 0x%03X", SEED_RESPONSE_ID);
                         }
@@ -182,10 +209,10 @@ static void transmit_can_step(const char *action_key, int step_idx) {
     cJSON_Delete(root);
 }
 
-static esp_err_t last_key_get_handler(httpd_req_t *req) {
+static esp_err_t last_rx_get_handler(httpd_req_t *req) {
     char resp[64];
-    if (last_key_valid) {
-        snprintf(resp, sizeof(resp), "{\"valid\":true,\"key\":\"%s\"}", last_key_hex);
+    if (last_rx_valid) {
+        snprintf(resp, sizeof(resp), "{\"valid\":true,\"key\":\"%s\"}", last_rx_line);
     } else {
         snprintf(resp, sizeof(resp), "{\"valid\":false,\"key\":\"\"}");
     }
@@ -265,7 +292,7 @@ static const httpd_uri_t script_uri = { .uri = "/script.js", .method = HTTP_GET,
 static const httpd_uri_t step_json_uri = { .uri = "/can_frames.json", .method = HTTP_GET, .handler = step_json_get_handler };
 static const httpd_uri_t execute_step_uri = { .uri = "/api/execute_step", .method = HTTP_POST, .handler = execute_step_post_handler };
 static const httpd_uri_t set_lang_uri = { .uri = "/api/set_lang", .method = HTTP_POST, .handler = set_lang_post_handler };
-static const httpd_uri_t last_key_uri = { .uri = "/api/last_key", .method = HTTP_GET, .handler = last_key_get_handler };
+static const httpd_uri_t last_rx_uri = { .uri = "/api/last_rx", .method = HTTP_GET, .handler = last_rx_get_handler };
 
 /* Start Web Server */
 static httpd_handle_t start_webserver(void) {
@@ -280,7 +307,7 @@ static httpd_handle_t start_webserver(void) {
         httpd_register_uri_handler(server, &step_json_uri);
         httpd_register_uri_handler(server, &execute_step_uri);
         httpd_register_uri_handler(server, &set_lang_uri);
-        httpd_register_uri_handler(server, &last_key_uri);
+        httpd_register_uri_handler(server, &last_rx_uri);
         ESP_LOGI(TAG, "Web server iniciado en puerto %d", config.server_port);
         return server;
     }
