@@ -159,8 +159,25 @@ async function executeStep() {
         });
 
         if (response.ok) {
+            let data = null;
+            try {
+                data = await response.json();
+            } catch (e) {
+                data = null;
+            }
+
             refreshKeyDebug();
-            if (currentStepIdx < action.steps.length - 1) {
+
+            if (currentActionKey === 'action1' && currentStepIdx === 0) {
+                if (data && data.access_ok) {
+                    currentStepIdx = 1;
+                    setTimeout(() => updateStepUI(), 300);
+                } else if (data && data.access_ok === false) {
+                    showMainScreen();
+                } else {
+                    btn.disabled = false;
+                }
+            } else if (currentStepIdx < action.steps.length - 1) {
                 currentStepIdx++;
                 setTimeout(() => updateStepUI(), 300);
             } else {

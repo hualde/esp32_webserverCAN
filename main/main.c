@@ -39,55 +39,61 @@ static char last_rx_line[128] = {0};
 #define SEED_REQUEST_ID 0x712
 #define SEED_RESPONSE_ID 0x77C
 #define SEED_ADDEND 0x4B31u
-#define SEED_RESPONSE_TIMEOUT_MS 500
-#define KEY_RESPONSE_TIMEOUT_MS 500
 
-static bool wait_for_seed_response(uint32_t *seed_out) {
-    if (!seed_out) return false;
+static void send_key_response(uint32_t key);
+
+static bool wait_for_access_ok(void) {
     twai_message_t rx_msg;
-    TickType_t start = xTaskGetTickCount();
-    TickType_t timeout = pdMS_TO_TICKS(SEED_RESPONSE_TIMEOUT_MS);
+    bool key_sent = false;
 
-    while ((xTaskGetTickCount() - start) < timeout) {
-        if (twai_receive(&rx_msg, pdMS_TO_TICKS(20)) == ESP_OK) {
-            if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                rx_msg.data_length_code >= 7 &&
-                rx_msg.data[1] == 0x67 &&
-                rx_msg.data[2] == 0x03) {
-                *seed_out = ((uint32_t)rx_msg.data[3] << 24) |
+    for (;;) {
+        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) {
+            continue;
+        }
+
+        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+            rx_msg.data_length_code >= 7 &&
+            rx_msg.data[1] == 0x67 &&
+            rx_msg.data[2] == 0x03 &&
+            !key_sent) {
+            uint32_t seed = ((uint32_t)rx_msg.data[3] << 24) |
                             ((uint32_t)rx_msg.data[4] << 16) |
                             ((uint32_t)rx_msg.data[5] << 8)  |
                             ((uint32_t)rx_msg.data[6]);
-                return true;
-            }
+            uint32_t key = seed + SEED_ADDEND;
+            ESP_LOGI(TAG, "  <- Seed 0x%08lX, Key 0x%08lX", seed, key);
+            send_key_response(key);
+            key_sent = true;
+            continue;
+        }
+
+        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+            rx_msg.data_length_code == 8 &&
+            rx_msg.data[0] == 0x02 &&
+            rx_msg.data[1] == 0x67 &&
+            rx_msg.data[2] == 0x04 &&
+            rx_msg.data[3] == 0xAA &&
+            rx_msg.data[4] == 0xAA &&
+            rx_msg.data[5] == 0xAA &&
+            rx_msg.data[6] == 0xAA &&
+            rx_msg.data[7] == 0xAA) {
+            snprintf(last_rx_line, sizeof(last_rx_line),
+                     "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
+                     (unsigned long)rx_msg.identifier,
+                     rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
+                     rx_msg.data[4], rx_msg.data[5], rx_msg.data[6],
+                     (rx_msg.data_length_code > 7 ? rx_msg.data[7] : 0x00));
+            last_rx_valid = true;
+            return true;
         }
     }
-    return false;
 }
 
-static bool wait_for_key_response(void) {
+static void drain_rx_queue(void) {
     twai_message_t rx_msg;
-    TickType_t start = xTaskGetTickCount();
-    TickType_t timeout = pdMS_TO_TICKS(KEY_RESPONSE_TIMEOUT_MS);
-
-    while ((xTaskGetTickCount() - start) < timeout) {
-        if (twai_receive(&rx_msg, pdMS_TO_TICKS(20)) == ESP_OK) {
-            if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                rx_msg.data_length_code >= 3 &&
-                rx_msg.data[1] == 0x67 &&
-                rx_msg.data[2] == 0x04) {
-                snprintf(last_rx_line, sizeof(last_rx_line),
-                         "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
-                         (unsigned long)rx_msg.identifier,
-                         rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
-                         rx_msg.data[4], rx_msg.data[5], rx_msg.data[6],
-                         (rx_msg.data_length_code > 7 ? rx_msg.data[7] : 0x00));
-                last_rx_valid = true;
-                return true;
-            }
-        }
+    while (twai_receive(&rx_msg, 0) == ESP_OK) {
+        // Descarta mensajes antiguos en cola RX
     }
-    return false;
 }
 
 static void send_key_response(uint32_t key) {
@@ -163,13 +169,14 @@ static uint32_t parse_can_id(cJSON *item) {
     return 0;
 }
 
-/* CAN Transmission Logic */
-static void transmit_can_step(const char *action_key, int step_idx) {
+/* CAN Transmission Logic (returns true if access OK on action1/step0) */
+static bool transmit_can_step(const char *action_key, int step_idx) {
+    bool access_ok = false;
     const char *json_data = (const char *)can_frames_json_start;
     cJSON *root = cJSON_ParseWithLength(json_data, can_frames_json_end - can_frames_json_start);
     if (!root) {
         ESP_LOGE(TAG, "Error parsing CAN JSON");
-        return;
+        return false;
     }
 
     cJSON *action_obj = cJSON_GetObjectItem(root, action_key);
@@ -226,17 +233,10 @@ static void transmit_can_step(const char *action_key, int step_idx) {
                     }
 
                     if (seed_request_tx_ok) {
+                        drain_rx_queue();
                         last_rx_valid = false;
-                        uint32_t seed = 0;
-                        if (wait_for_seed_response(&seed)) {
-                            uint32_t key = seed + SEED_ADDEND;
-                            ESP_LOGI(TAG, "  <- Seed 0x%08lX, Key 0x%08lX", seed, key);
-                            send_key_response(key);
-                            if (!wait_for_key_response()) {
-                                ESP_LOGE(TAG, "  !! Timeout esperando respuesta 0x67 0x04");
-                            }
-                        } else {
-                            ESP_LOGE(TAG, "  !! Timeout esperando seed 0x%03X", SEED_RESPONSE_ID);
+                        if (wait_for_access_ok()) {
+                            access_ok = true;
                         }
                     }
                 }
@@ -244,6 +244,7 @@ static void transmit_can_step(const char *action_key, int step_idx) {
         }
     }
     cJSON_Delete(root);
+    return access_ok;
 }
 
 static esp_err_t last_rx_get_handler(httpd_req_t *req) {
@@ -292,6 +293,7 @@ static esp_err_t step_json_get_handler(httpd_req_t *req) {
 static esp_err_t execute_step_post_handler(httpd_req_t *req) {
     char buf[128];
     int ret = httpd_req_get_url_query_str(req, buf, sizeof(buf));
+    bool access_ok = false;
     if (ret == ESP_OK) {
         char action[32];
         char step_str[10];
@@ -299,10 +301,13 @@ static esp_err_t execute_step_post_handler(httpd_req_t *req) {
             httpd_query_key_value(buf, "step", step_str, sizeof(step_str)) == ESP_OK) {
             
             int step_idx = atoi(step_str);
-            transmit_can_step(action, step_idx);
+            access_ok = transmit_can_step(action, step_idx);
         }
     }
-    httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+    char resp[64];
+    snprintf(resp, sizeof(resp), "{\"ok\":true,\"access_ok\":%s}", access_ok ? "true" : "false");
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
 
