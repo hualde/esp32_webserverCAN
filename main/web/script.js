@@ -107,6 +107,15 @@ function updateStepUI() {
         }
     }
 
+    const selectorCard = document.getElementById('step2-selector');
+    if (selectorCard) {
+        if (currentActionKey === 'action1' && currentStepIdx === 1) {
+            selectorCard.classList.remove('hidden');
+        } else {
+            selectorCard.classList.add('hidden');
+        }
+    }
+
     // Progress
     const progress = (currentStepIdx / steps.length) * 100;
     document.getElementById('progress-inner').style.width = `${progress}%`;
@@ -153,8 +162,20 @@ async function executeStep() {
     const action = canData[currentActionKey];
     const lang = document.getElementById('language-select').value;
 
+    let url = `/api/execute_step?action=${currentActionKey}&step=${currentStepIdx}`;
+    if (currentActionKey === 'action1' && currentStepIdx === 1) {
+        const sel = document.getElementById('step2-select');
+        const selectedValue = sel ? sel.value : '';
+        if (!selectedValue) {
+            alert("Selecciona una opción");
+            btn.disabled = false;
+            return;
+        }
+        url += `&xx=${encodeURIComponent(selectedValue)}`;
+    }
+
     try {
-        const response = await fetch(`/api/execute_step?action=${currentActionKey}&step=${currentStepIdx}`, {
+        const response = await fetch(url, {
             method: 'POST'
         });
 
@@ -172,8 +193,21 @@ async function executeStep() {
                 if (data && data.access_ok) {
                     currentStepIdx = 1;
                     setTimeout(() => updateStepUI(), 300);
-                } else if (data && data.access_ok === false) {
-                    showMainScreen();
+                } else {
+                    btn.disabled = false;
+                }
+            } else if (currentActionKey === 'action1' && currentStepIdx === 1) {
+                if (data && data.step_ok) {
+                    if (currentStepIdx < action.steps.length - 1) {
+                        currentStepIdx++;
+                        setTimeout(() => updateStepUI(), 300);
+                    } else {
+                        document.getElementById('progress-inner').style.width = `100%`;
+                        document.getElementById('step-description').innerText = translations[lang].completed;
+                        btn.innerText = translations[lang].finish;
+                        btn.disabled = false;
+                        btn.onclick = showMainScreen;
+                    }
                 } else {
                     btn.disabled = false;
                 }

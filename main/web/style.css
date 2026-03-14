@@ -198,6 +198,32 @@ footer {
     font-size: 0.8rem;
 }
 
+.selector-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(217, 1, 122, 0.05);
+    padding: 12px;
+    border-radius: 12px;
+    margin: 0 0 20px 0;
+    border: 1px dashed rgba(217, 1, 122, 0.2);
+}
+
+.selector-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--secondary-color);
+}
+
+.selector-input {
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(217, 1, 122, 0.2);
+    background: rgba(255, 255, 255, 0.8);
+    color: var(--text-color);
+    font-family: inherit;
+}
+
 .progress-bar {
     width: 100%;
     height: 6px;

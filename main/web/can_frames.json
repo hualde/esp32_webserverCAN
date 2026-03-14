@@ -43,33 +43,15 @@
             },
             {
                 "description": {
-                    "es": "Paso 2: Borrado de memoria de fallos",
-                    "en": "Step 2: Clearing fault memory",
-                    "fr": "Étape 2: Effacer la mémoire des défauts",
-                    "de": "Schritt 2: Fehlerspeicher löschen"
+                    "es": "Paso 2: Envío de codificación",
+                    "en": "Step 2: Send coding",
+                    "fr": "Étape 2 : Envoi du codage",
+                    "de": "Schritt 2: Codierung senden"
                 },
                 "frames": [
                     {
-                        "id": "8C",
-                        "data": ["0x04", "0x14", "0xFF", "0xFF", "0xFF", "0x00", "0x00", "0x00"],
-                        "dlc": 8,
-                        "delay_ms": 100
-                    },
-                    {
-                        "id": "96",
-                        "data": ["0x02", "0x10", "0x01", "0x00", "0x00", "0x00", "0x00", "0x00"],
-                        "dlc": 8,
-                        "delay_ms": 50
-                    },
-                    {
-                        "id": "A0",
-                        "data": ["0x01", "0x3E", "0x00", "0x00", "0x00", "0x00", "0x00", "0x00"],
-                        "dlc": 8,
-                        "delay_ms": 20
-                    },
-                    {
-                        "id": "AA",
-                        "data": ["0x02", "0x1F", "0x01", "0x00", "0x00", "0x00", "0x00", "0x00"],
+                        "id": "712",
+                        "data": ["0x07", "0x2E", "0x06", "0x00", "0x00", "0x1F", "0x00", "0x00"],
                         "dlc": 8,
                         "delay_ms": 50
                     }

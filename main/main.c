@@ -34,6 +34,8 @@ extern const uint8_t can_frames_json_end[]   asm("_binary_can_frames_json_end");
 static char current_lang[3] = "es";
 static bool last_rx_valid = false;
 static char last_rx_line[128] = {0};
+static uint8_t pending_xx = 0x00;
+static bool pending_xx_valid = false;
 
 /* Seguridad UDS: desbloqueo por seed/key */
 #define SEED_REQUEST_ID 0x712
@@ -41,6 +43,7 @@ static char last_rx_line[128] = {0};
 #define SEED_ADDEND 0x4B31u
 
 static void send_key_response(uint32_t key);
+static bool wait_for_step2_response(void);
 
 static bool wait_for_access_ok(void) {
     twai_message_t rx_msg;
@@ -82,6 +85,34 @@ static bool wait_for_access_ok(void) {
                      (unsigned long)rx_msg.identifier,
                      rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
                      rx_msg.data[4], rx_msg.data[5], rx_msg.data[6],
+                     (rx_msg.data_length_code > 7 ? rx_msg.data[7] : 0x00));
+            last_rx_valid = true;
+            return true;
+        }
+    }
+}
+
+static bool wait_for_step2_response(void) {
+    twai_message_t rx_msg;
+
+    for (;;) {
+        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) {
+            continue;
+        }
+
+        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+            rx_msg.data_length_code >= 4 &&
+            rx_msg.data[0] == 0x03 &&
+            rx_msg.data[1] == 0x6E &&
+            rx_msg.data[2] == 0x06 &&
+            rx_msg.data[3] == 0x00) {
+            snprintf(last_rx_line, sizeof(last_rx_line),
+                     "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
+                     (unsigned long)rx_msg.identifier,
+                     rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
+                     (rx_msg.data_length_code > 4 ? rx_msg.data[4] : 0x00),
+                     (rx_msg.data_length_code > 5 ? rx_msg.data[5] : 0x00),
+                     (rx_msg.data_length_code > 6 ? rx_msg.data[6] : 0x00),
                      (rx_msg.data_length_code > 7 ? rx_msg.data[7] : 0x00));
             last_rx_valid = true;
             return true;
@@ -148,6 +179,16 @@ static bool send_seed_request_frame(void) {
     return false;
 }
 
+static bool parse_query_byte(const char *str, uint8_t *out) {
+    if (!str || !out) return false;
+    char *endptr = NULL;
+    unsigned long val = strtoul(str, &endptr, 0);
+    if (endptr == str) return false;
+    if (val > 0xFF) val &= 0xFF;
+    *out = (uint8_t)val;
+    return true;
+}
+
 /* Parsea un valor que puede ser número (decimal) o string (hex: "0x064", "064", "64") */
 static uint32_t parse_can_id_or_byte(cJSON *item) {
     if (!item) return 0;
@@ -172,6 +213,7 @@ static uint32_t parse_can_id(cJSON *item) {
 /* CAN Transmission Logic (returns true if access OK on action1/step0) */
 static bool transmit_can_step(const char *action_key, int step_idx) {
     bool access_ok = false;
+    bool step2_ok = false;
     const char *json_data = (const char *)can_frames_json_start;
     cJSON *root = cJSON_ParseWithLength(json_data, can_frames_json_end - can_frames_json_start);
     if (!root) {
@@ -210,6 +252,11 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                         message.data[j] = (uint8_t)parse_can_id_or_byte(item);
                     }
 
+                    if (strcmp(action_key, "action1") == 0 && step_idx == 1 &&
+                        id == SEED_REQUEST_ID && dlc >= 5 && pending_xx_valid) {
+                        message.data[4] = pending_xx;
+                    }
+
                     bool tx_ok = (twai_transmit(&message, pdMS_TO_TICKS(100)) == ESP_OK);
                     if (tx_ok) {
                         ESP_LOGI(TAG, "  -> CAN Transmit: ID 0x%03lX", id);
@@ -240,11 +287,19 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                         }
                     }
                 }
+
+                if (strcmp(action_key, "action1") == 0 && step_idx == 1) {
+                    drain_rx_queue();
+                    last_rx_valid = false;
+                    if (wait_for_step2_response()) {
+                        step2_ok = true;
+                    }
+                }
             }
         }
     }
     cJSON_Delete(root);
-    return access_ok;
+    return (step_idx == 1) ? step2_ok : access_ok;
 }
 
 static esp_err_t last_rx_get_handler(httpd_req_t *req) {
@@ -294,18 +349,35 @@ static esp_err_t execute_step_post_handler(httpd_req_t *req) {
     char buf[128];
     int ret = httpd_req_get_url_query_str(req, buf, sizeof(buf));
     bool access_ok = false;
+    bool step_ok = false;
     if (ret == ESP_OK) {
         char action[32];
         char step_str[10];
+        char xx_str[16] = {0};
         if (httpd_query_key_value(buf, "action", action, sizeof(action)) == ESP_OK &&
             httpd_query_key_value(buf, "step", step_str, sizeof(step_str)) == ESP_OK) {
             
             int step_idx = atoi(step_str);
-            access_ok = transmit_can_step(action, step_idx);
+            pending_xx_valid = false;
+            if (httpd_query_key_value(buf, "xx", xx_str, sizeof(xx_str)) == ESP_OK) {
+                uint8_t parsed = 0;
+                if (parse_query_byte(xx_str, &parsed)) {
+                    pending_xx = parsed;
+                    pending_xx_valid = true;
+                }
+            }
+
+            bool result = transmit_can_step(action, step_idx);
+            if (strcmp(action, "action1") == 0 && step_idx == 1) {
+                step_ok = result;
+            } else {
+                access_ok = result;
+            }
         }
     }
-    char resp[64];
-    snprintf(resp, sizeof(resp), "{\"ok\":true,\"access_ok\":%s}", access_ok ? "true" : "false");
+    char resp[96];
+    snprintf(resp, sizeof(resp), "{\"ok\":true,\"access_ok\":%s,\"step_ok\":%s}",
+             access_ok ? "true" : "false", step_ok ? "true" : "false");
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
