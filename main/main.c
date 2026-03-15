@@ -471,6 +471,11 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                 int frames_count = cJSON_GetArraySize(frames_array);
                 ESP_LOGI(TAG, "Ejecutando %s - Paso %d (%d tramas)", action_key, step_idx + 1, frames_count);
                 
+                if (strcmp(action_key, "action2") == 0 && step_idx == 0) {
+                    // Evita borrar respuestas válidas que lleguen justo tras el 27 03
+                    drain_rx_queue();
+                }
+
                 bool seed_request_tx_ok = false;
                 for (int i = 0; i < frames_count; i++) {
                     cJSON *frame_obj = cJSON_GetArrayItem(frames_array, i);
@@ -503,8 +508,8 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                         ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03lX", id);
                     }
 
-                    if (strcmp(action_key, "action1") == 0 && step_idx == 0 &&
-                        id == SEED_REQUEST_ID && dlc >= 3 &&
+                    if ((strcmp(action_key, "action1") == 0 || strcmp(action_key, "action2") == 0) &&
+                        step_idx == 0 && id == SEED_REQUEST_ID && dlc >= 3 &&
                         message.data[0] == 0x02 && message.data[1] == 0x27 &&
                         message.data[2] == 0x03) {
                         seed_request_tx_ok = tx_ok;
@@ -513,13 +518,16 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                     if (delay > 0) vTaskDelay(pdMS_TO_TICKS(delay));
                 }
 
-                if (strcmp(action_key, "action1") == 0 && step_idx == 0) {
+                if ((strcmp(action_key, "action1") == 0 || strcmp(action_key, "action2") == 0) &&
+                    step_idx == 0) {
                     if (!seed_request_tx_ok) {
                         seed_request_tx_ok = send_seed_request_frame();
                     }
 
                     if (seed_request_tx_ok) {
-                        drain_rx_queue();
+                        if (strcmp(action_key, "action1") == 0) {
+                            drain_rx_queue();
+                        }
                         last_rx_valid = false;
                         if (wait_for_access_ok()) {
                             access_ok = true;

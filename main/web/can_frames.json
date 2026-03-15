@@ -61,45 +61,54 @@
     },
     "action2": {
         "title": {
-            "es": "Ajuste de Parámetros",
-            "en": "Parameter Adjustment",
-            "fr": "Ajustement des Paramètres",
-            "de": "Parametereinstellung"
+            "es": "Ajuste de los topes",
+            "en": "Endstop Adjustment",
+            "fr": "Réglage des Butées",
+            "de": "Endanschlag-Einstellung"
         },
         "steps": [
             {
                 "description": {
-                    "es": "Paso 1: Configuración de Unidad Lizarte",
-                    "en": "Step 1: Lizarte Unit Configuration",
-                    "fr": "Étape 1: Configuration de l'unité Lizarte",
-                    "de": "Schritt 1: Lizarte-Einheitenkonfiguration"
+                    "es": "Paso 1: Sesión y desbloqueo de seguridad",
+                    "en": "Step 1: Session and security unlock",
+                    "fr": "Étape 1 : Session et déverrouillage sécurité",
+                    "de": "Schritt 1: Sitzung und Sicherheitsfreigabe"
                 },
                 "frames": [
                     {
-                        "id": "D2",
-                        "data": ["0x03", "0x22", "0x01", "0x01", "0x00", "0x00", "0x00", "0x00"],
+                        "id": "712",
+                        "data": ["0x02", "0x3E", "0x00", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF"],
+                        "dlc": 8,
+                        "delay_ms": 50
+                    },
+                    {
+                        "id": "712",
+                        "data": ["0x02", "0x10", "0x03", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF"],
+                        "dlc": 8,
+                        "delay_ms": 50
+                    },
+                    {
+                        "id": "712",
+                        "data": ["0x04", "0x14", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF"],
                         "dlc": 8,
                         "delay_ms": 100
                     },
                     {
-                        "id": "DC",
-                        "data": ["0x04", "0x2E", "0x01", "0x01", "0xEB", "0x00", "0x00", "0x00"],
+                        "id": "712",
+                        "data": ["0x02", "0x27", "0x03", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF"],
                         "dlc": 8,
-                        "delay_ms": 100
-                    },
-                    {
-                        "id": "E6",
-                        "data": ["0x02", "0x10", "0x01", "0x00", "0x00", "0x00", "0x00", "0x00"],
-                        "dlc": 8,
-                        "delay_ms": 100
-                    },
-                    {
-                        "id": "F0",
-                        "data": ["0x01", "0x3E", "0x00", "0x00", "0x00", "0x00", "0x00", "0x00"],
-                        "dlc": 8,
-                        "delay_ms": 100
+                        "delay_ms": 50
                     }
                 ]
+            },
+            {
+                "description": {
+                    "es": "Paso 2: (pendiente)",
+                    "en": "Step 2: (pending)",
+                    "fr": "Étape 2 : (en attente)",
+                    "de": "Schritt 2: (ausstehend)"
+                },
+                "frames": []
             }
         ]
     }

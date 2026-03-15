@@ -100,7 +100,7 @@ function updateStepUI() {
 
     const debugCard = document.getElementById('key-debug');
     if (debugCard) {
-        if (currentActionKey === 'action1' && currentStepIdx === 0) {
+        if ((currentActionKey === 'action1' || currentActionKey === 'action2') && currentStepIdx === 0) {
             refreshKeyDebug();
         } else {
             debugCard.classList.add('hidden');
@@ -189,7 +189,7 @@ async function executeStep() {
 
             refreshKeyDebug();
 
-            if (currentActionKey === 'action1' && currentStepIdx === 0) {
+            if ((currentActionKey === 'action1' || currentActionKey === 'action2') && currentStepIdx === 0) {
                 if (data && data.access_ok) {
                     currentStepIdx = 1;
                     setTimeout(() => updateStepUI(), 300);
