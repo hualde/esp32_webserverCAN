@@ -775,7 +775,9 @@ static esp_err_t execute_step_post_handler(httpd_req_t *req) {
             }
 
             bool result = transmit_can_step(action, step_idx);
-            if (strcmp(action, "action1") == 0 && step_idx == 1) {
+            if (strcmp(action, "action1") == 0 && step_idx >= 1) {
+                step_ok = result;
+            } else if (strcmp(action, "action2") == 0 && step_idx >= 1) {
                 step_ok = result;
             } else {
                 access_ok = result;
