@@ -74,82 +74,79 @@ Para cambiar las tramas que se envían al pulsar los botones, edita el archivo `
 ### Acción 1 — Codificación
 
 **Paso 1 (seguridad UDS)**
-- Envía (según `can_frames.json`):
-  - `712 → 02 3E 00 FF FF FF FF FF`
-  - `712 → 02 10 03 FF FF FF FF FF`
-  - `712 → 04 14 FF FF FF FF FF FF`
-  - `712 → 02 27 03 FF FF FF FF FF`
-- Recibe seed: `77C → 06 67 03 B1 B2 B3 B4`
-- Calcula key: `key = seed + 0x4B31`
-- Envía key: `712 → 06 27 04 K1 K2 K3 K4 FF`
-- También acepta directamente: `77C → 02 67 04 AA AA AA AA AA`
-- Solo con esa respuesta se habilita el Paso 2.
+- `TX 712 → 02 3E 00 FF FF FF FF FF`
+- `RX 77C → 02 7E 00 AA AA AA AA AA`
+- `TX 712 → 02 10 03 FF FF FF FF FF`
+- `RX 77C → 06 50 03 00 32 01 F4 AA`
+- `TX 712 → 02 27 03 FF FF FF FF FF`
+- `RX 77C → 06 67 03 B1 B2 B3 B4 AA` (seed)
+- `TX 712 → 06 27 04 K1 K2 K3 K4 FF` (K3K4 = B3B4 + 0x4B31)
+- `RX 77C → 02 67 04 AA AA AA AA AA` (acceso OK → paso 2)
 
-**Paso 2 (codificación + secuencia)**
-- Envía: `712 → 07 2E 06 00 XX 1F 00 00` (XX viene del selector web)
-- Espera: `77C → 03 6E 06 00`
-- Envía: `712 → 02 11 02 FF FF FF FF FF`
-- Espera: `77C → 02 51 02`
-- Envía: `712 → 02 3E 00 FF FF FF FF FF`
-- Espera 50 ms
-- Envía: `712 → 02 10 03 FF FF FF FF FF`
-- Escribir fingerprint (DID F198, multi‑frame):
-  - `712 → 10 09 2E F1 98 0A 2C 2F`
-  - Espera: `77C → 30 0F 03`
-  - `712 → 21 CF 86 9F FF FF FF FF`
-  - Espera: `77C → 03 6E F1 98`
-- Escribir coding date (DID F199):
-  - `712 → 06 2E F1 99 26 03 06 FF`
-  - Espera: `77C → 03 6E F1 99`
-- Lectura final:
-  - `712 → 03 22 06 00 FF FF FF FF`
-  - Espera: `77C → 07 62 06 00 XX XX XX XX` (XX cualquier valor)
-- La última respuesta se muestra en el debug de la web.
+**Paso 2 (escritura coding)**
+- `TX 712 → 07 2E 06 00 XX 1F 00 00` (XX = byte configurado)
+- `RX 77C → 03 6E 06 00 AA AA AA AA`
+
+**Paso 3 (reset y sesión)**
+- `TX 712 → 02 11 02 FF FF FF FF FF`
+- `RX 77C → 03 7F 11 78 AA AA AA AA` (pending)
+- `RX 77C → 02 51 02 AA AA AA AA AA` (reset OK)
+- `TX 712 → 02 3E 00 FF FF FF FF FF`
+- `RX 77C → 02 7E 00 AA AA AA AA AA`
+- `TX 712 → 02 10 03 FF FF FF FF FF`
+- `RX 77C → 06 50 03 00 32 01 F4 AA`
+
+**Paso 4 (fingerprint y fecha)**
+- `TX 712 → 10 09 2E F1 98 0A 2C 2F`
+- `RX 77C → 30 0F 03 AA AA AA AA AA`
+- `TX 712 → 21 CF 86 9F FF FF FF FF`
+- `RX 77C → 03 6E F1 98 AA AA AA AA`
+- `TX 712 → 06 2E F1 99 26 03 06 FF`
+- `RX 77C → 03 6E F1 99 AA AA AA AA`
+
+**Paso 5 (verificación)**
+- `TX 712 → 03 22 06 00 FF FF FF FF`
+- `RX 77C → 07 62 06 00 XX 1F 00 00` (XX debe coincidir con paso 2)
 
 ### Acción 2 — Ajuste de los topes
 
 **Paso 1 (seguridad UDS)**
-- Envía (según `can_frames.json`):
-  - `712 → 02 3E 00 FF FF FF FF FF`
-  - `712 → 02 10 03 FF FF FF FF FF`
-  - `712 → 04 14 FF FF FF FF FF FF`
-  - `712 → 02 27 03 FF FF FF FF FF`
-- Recibe seed: `77C → 06 67 03 B1 B2 B3 B4`
-- Calcula key: `key = seed + 0x4B31`
-- Envía key: `712 → 06 27 04 K1 K2 K3 K4 FF`
-- También acepta directamente: `77C → 02 67 04 AA AA AA AA AA`
-- Solo con esa respuesta se habilita el Paso 2.
+- `TX 712 → 02 3E 00 FF FF FF FF FF`
+- `RX 77C → 02 7E 00 AA AA AA AA AA`
+- `TX 712 → 02 10 03 FF FF FF FF FF`
+- `RX 77C → 06 50 03 00 32 01 F4 AA`
+- `TX 712 → 02 27 03 FF FF FF FF FF`
+- `RX 77C → 06 67 03 B1 B2 B3 B4 AA` (seed)
+- `TX 712 → 06 27 04 K1 K2 K3 K4 FF` (K3K4 = B3B4 + 0x4B31)
+- `RX 77C → 02 67 04 AA AA AA AA AA` (acceso OK → paso 2)
 
-**Paso 2 (secuencia de lectura + rutina)**
-- Envía:
-  - `712 → 03 22 18 1B FF FF FF FF`
-  - `712 → 30 00 00 FF FF FF FF FF`
-  - `712 → 04 31 01 04 16 FF FF FF`
-  - `712 → 04 31 03 04 16 FF FF FF`
-- Espera (en orden):
-  - `77C → 10 09 62 18 1B .. .. ..` (first frame)
-  - `77C → 21 .. .. .. .. .. ..` (consecutive frame)
-  - `77C → 04 71 01 04 16 .. .. ..`
-  - `77C → 07 71 03 04 16 01`
-- Solo con ambas respuestas se habilita el Paso 3.
+**Paso 2 (lectura estado + iniciar rutina)**
+- `TX 712 → 03 22 18 1B FF FF FF FF`
+- `RX 77C → 10 08 62 18 1B 01 01 01`
+- `TX 712 → 30 00 00 FF FF FF FF FF`
+- `RX 77C → 21 01 01 AA AA AA AA AA`
+- `TX 712 → 04 31 01 04 16 FF FF FF`
+- `RX 77C → 04 71 01 04 16 AA AA AA`
+- `TX 712 → 04 31 03 04 16 FF FF FF`
+- `RX 77C → 07 71 03 04 16 01 FF FF` (rutina activa → paso 3)
 
-**Paso 3 (topes y centrado)**
-- Instrucción al usuario: llevar a tope izquierdo 3 s, tope derecho 3 s, luego centro.
-- Envia en bucle cada ~400 ms:
-  - `712 → 03 22 18 16 FF FF FF FF`
-- Mientras el usuario gira:
-  - `77C → 07 62 18 16 00 01 01 01`
-- Cuando termina:
-  - `77C → 07 62 18 16 00 00 01 00`
-- Con esa respuesta final se habilita el Paso 4.
+**Paso 3 (polling — operario gira volante tope a tope)**
+- `TX 712 → 03 22 18 16 FF FF FF FF` (repetir cada ~400 ms)
+- `RX 77C → 07 62 18 16 00 01 01 01` (en curso)
+- `RX 77C → 07 62 18 16 00 00 01 00` (completado → paso 4)
 
-**Paso 4 (cierre del procedimiento)**
-- Envía:
-  - `712 → 04 31 02 04 16 FF FF FF`
-  - `712 → 04 31 03 04 16 FF FF FF`
-  - `712 → 03 22 19 23 FF FF FF FF`
-- Espera: `77C → 10 09 62 19 23 01 XX XX` (XX cualquier valor)
-- Si llega, envía: `712 → 04 14 FF FF FF FF FF FF`
+**Paso 4 (cierre)**
+- `TX 712 → 04 31 02 04 16 FF FF FF`
+- `RX 77C → 04 71 02 04 16 AA AA AA`
+- `TX 712 → 04 31 03 04 16 FF FF FF`
+- `RX 77C → 07 71 03 04 16 02 FF FF`
+- `TX 712 → 03 22 19 23 FF FF FF FF`
+- `RX 77C → 10 09 62 19 23 01 00 28`
+- `TX 712 → 30 00 00 FF FF FF FF FF`
+- `RX 77C → 21 64 D7 E2 AA AA AA AA`
+- `TX 712 → 04 14 FF FF FF FF FF FF`
+- `RX 77C → 03 7F 14 78 AA AA AA AA` (pending)
+- `RX 77C → 01 54 AA AA AA AA AA AA` (DTCs borrados)
 
 ---
 Desarrollado para integración en sistemas de diagnosis.

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <inttypes.h>
 #include "esp_timer.h"
 #include "esp_log.h"
 #include "esp_http_server.h"
@@ -43,7 +44,23 @@ static bool pending_xx_valid = false;
 #define SEED_ADDEND 0x4B31u
 
 static void send_key_response(uint32_t key);
-static bool wait_for_step2_response(void);
+
+static bool send_can_frame(uint32_t id, const uint8_t data[8]) {
+    twai_message_t message;
+    memset(&message, 0, sizeof(message));
+    message.identifier = id;
+    message.extd = 0;
+    message.rtr = 0;
+    message.data_length_code = 8;
+    memcpy(message.data, data, 8);
+
+    if (twai_transmit(&message, pdMS_TO_TICKS(100)) == ESP_OK) {
+        ESP_LOGI(TAG, "  -> CAN Transmit: ID 0x%03" PRIX32, id);
+        return true;
+    }
+    ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03" PRIX32, id);
+    return false;
+}
 
 static bool wait_for_access_ok(void) {
     twai_message_t rx_msg;
@@ -92,272 +109,6 @@ static bool wait_for_access_ok(void) {
     }
 }
 
-static bool wait_for_step2_response(void) {
-    twai_message_t rx_msg;
-
-    for (;;) {
-        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) {
-            continue;
-        }
-
-        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-            rx_msg.data_length_code >= 4 &&
-            rx_msg.data[0] == 0x03 &&
-            rx_msg.data[1] == 0x6E &&
-            rx_msg.data[2] == 0x06 &&
-            rx_msg.data[3] == 0x00) {
-            snprintf(last_rx_line, sizeof(last_rx_line),
-                     "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
-                     (unsigned long)rx_msg.identifier,
-                     rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
-                     (rx_msg.data_length_code > 4 ? rx_msg.data[4] : 0x00),
-                     (rx_msg.data_length_code > 5 ? rx_msg.data[5] : 0x00),
-                     (rx_msg.data_length_code > 6 ? rx_msg.data[6] : 0x00),
-                     (rx_msg.data_length_code > 7 ? rx_msg.data[7] : 0x00));
-            last_rx_valid = true;
-
-            twai_message_t reset_msg;
-            memset(&reset_msg, 0, sizeof(reset_msg));
-            reset_msg.identifier = SEED_REQUEST_ID;
-            reset_msg.extd = 0;
-            reset_msg.rtr = 0;
-            reset_msg.data_length_code = 8;
-            reset_msg.data[0] = 0x02;
-            reset_msg.data[1] = 0x11;
-            reset_msg.data[2] = 0x02;
-            reset_msg.data[3] = 0xFF;
-            reset_msg.data[4] = 0xFF;
-            reset_msg.data[5] = 0xFF;
-            reset_msg.data[6] = 0xFF;
-            reset_msg.data[7] = 0xFF;
-
-            if (twai_transmit(&reset_msg, pdMS_TO_TICKS(100)) == ESP_OK) {
-                ESP_LOGI(TAG, "  -> CAN Transmit: ID 0x%03X (11 02)", SEED_REQUEST_ID);
-            } else {
-                ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03X (11 02)", SEED_REQUEST_ID);
-                return false;
-            }
-
-            for (;;) {
-                if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) {
-                    continue;
-                }
-                if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                    rx_msg.data_length_code >= 3 &&
-                    rx_msg.data[0] == 0x02 &&
-                    rx_msg.data[1] == 0x51 &&
-                    rx_msg.data[2] == 0x02) {
-                    snprintf(last_rx_line, sizeof(last_rx_line),
-                             "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
-                             (unsigned long)rx_msg.identifier,
-                             rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
-                             (rx_msg.data_length_code > 4 ? rx_msg.data[4] : 0x00),
-                             (rx_msg.data_length_code > 5 ? rx_msg.data[5] : 0x00),
-                             (rx_msg.data_length_code > 6 ? rx_msg.data[6] : 0x00),
-                             (rx_msg.data_length_code > 7 ? rx_msg.data[7] : 0x00));
-                    last_rx_valid = true;
-
-                    twai_message_t keep_alive1;
-                    memset(&keep_alive1, 0, sizeof(keep_alive1));
-                    keep_alive1.identifier = SEED_REQUEST_ID;
-                    keep_alive1.extd = 0;
-                    keep_alive1.rtr = 0;
-                    keep_alive1.data_length_code = 8;
-                    keep_alive1.data[0] = 0x02;
-                    keep_alive1.data[1] = 0x3E;
-                    keep_alive1.data[2] = 0x00;
-                    keep_alive1.data[3] = 0xFF;
-                    keep_alive1.data[4] = 0xFF;
-                    keep_alive1.data[5] = 0xFF;
-                    keep_alive1.data[6] = 0xFF;
-                    keep_alive1.data[7] = 0xFF;
-
-                    if (twai_transmit(&keep_alive1, pdMS_TO_TICKS(100)) == ESP_OK) {
-                        ESP_LOGI(TAG, "  -> CAN Transmit: ID 0x%03X (3E 00)", SEED_REQUEST_ID);
-                    } else {
-                        ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03X (3E 00)", SEED_REQUEST_ID);
-                        return false;
-                    }
-
-                    vTaskDelay(pdMS_TO_TICKS(50));
-
-                    twai_message_t diag_session;
-                    memset(&diag_session, 0, sizeof(diag_session));
-                    diag_session.identifier = SEED_REQUEST_ID;
-                    diag_session.extd = 0;
-                    diag_session.rtr = 0;
-                    diag_session.data_length_code = 8;
-                    diag_session.data[0] = 0x02;
-                    diag_session.data[1] = 0x10;
-                    diag_session.data[2] = 0x03;
-                    diag_session.data[3] = 0xFF;
-                    diag_session.data[4] = 0xFF;
-                    diag_session.data[5] = 0xFF;
-                    diag_session.data[6] = 0xFF;
-                    diag_session.data[7] = 0xFF;
-
-                    if (twai_transmit(&diag_session, pdMS_TO_TICKS(100)) == ESP_OK) {
-                        ESP_LOGI(TAG, "  -> CAN Transmit: ID 0x%03X (10 03)", SEED_REQUEST_ID);
-                    } else {
-                        ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03X (10 03)", SEED_REQUEST_ID);
-                        return false;
-                    }
-
-                    twai_message_t fp_first;
-                    memset(&fp_first, 0, sizeof(fp_first));
-                    fp_first.identifier = SEED_REQUEST_ID;
-                    fp_first.extd = 0;
-                    fp_first.rtr = 0;
-                    fp_first.data_length_code = 8;
-                    fp_first.data[0] = 0x10;
-                    fp_first.data[1] = 0x09;
-                    fp_first.data[2] = 0x2E;
-                    fp_first.data[3] = 0xF1;
-                    fp_first.data[4] = 0x98;
-                    fp_first.data[5] = 0x0A;
-                    fp_first.data[6] = 0x2C;
-                    fp_first.data[7] = 0x2F;
-
-                    if (twai_transmit(&fp_first, pdMS_TO_TICKS(100)) == ESP_OK) {
-                        ESP_LOGI(TAG, "  -> CAN Transmit: ID 0x%03X (F198 FF)", SEED_REQUEST_ID);
-                    } else {
-                        ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03X (F198 FF)", SEED_REQUEST_ID);
-                        return false;
-                    }
-
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) {
-                            continue;
-                        }
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code >= 3 &&
-                            rx_msg.data[0] == 0x30 &&
-                            rx_msg.data[1] == 0x0F &&
-                            rx_msg.data[2] == 0x03) {
-                            break;
-                        }
-                    }
-
-                    twai_message_t fp_cf;
-                    memset(&fp_cf, 0, sizeof(fp_cf));
-                    fp_cf.identifier = SEED_REQUEST_ID;
-                    fp_cf.extd = 0;
-                    fp_cf.rtr = 0;
-                    fp_cf.data_length_code = 8;
-                    fp_cf.data[0] = 0x21;
-                    fp_cf.data[1] = 0xCF;
-                    fp_cf.data[2] = 0x86;
-                    fp_cf.data[3] = 0x9F;
-                    fp_cf.data[4] = 0xFF;
-                    fp_cf.data[5] = 0xFF;
-                    fp_cf.data[6] = 0xFF;
-                    fp_cf.data[7] = 0xFF;
-
-                    if (twai_transmit(&fp_cf, pdMS_TO_TICKS(100)) == ESP_OK) {
-                        ESP_LOGI(TAG, "  -> CAN Transmit: ID 0x%03X (F198 CF)", SEED_REQUEST_ID);
-                    } else {
-                        ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03X (F198 CF)", SEED_REQUEST_ID);
-                        return false;
-                    }
-
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) {
-                            continue;
-                        }
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code >= 4 &&
-                            rx_msg.data[0] == 0x03 &&
-                            rx_msg.data[1] == 0x6E &&
-                            rx_msg.data[2] == 0xF1 &&
-                            rx_msg.data[3] == 0x98) {
-                            break;
-                        }
-                    }
-
-                    twai_message_t coding_date;
-                    memset(&coding_date, 0, sizeof(coding_date));
-                    coding_date.identifier = SEED_REQUEST_ID;
-                    coding_date.extd = 0;
-                    coding_date.rtr = 0;
-                    coding_date.data_length_code = 8;
-                    coding_date.data[0] = 0x06;
-                    coding_date.data[1] = 0x2E;
-                    coding_date.data[2] = 0xF1;
-                    coding_date.data[3] = 0x99;
-                    coding_date.data[4] = 0x26;
-                    coding_date.data[5] = 0x03;
-                    coding_date.data[6] = 0x06;
-                    coding_date.data[7] = 0xFF;
-
-                    if (twai_transmit(&coding_date, pdMS_TO_TICKS(100)) == ESP_OK) {
-                        ESP_LOGI(TAG, "  -> CAN Transmit: ID 0x%03X (F199)", SEED_REQUEST_ID);
-                    } else {
-                        ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03X (F199)", SEED_REQUEST_ID);
-                        return false;
-                    }
-
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) {
-                            continue;
-                        }
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code >= 4 &&
-                            rx_msg.data[0] == 0x03 &&
-                            rx_msg.data[1] == 0x6E &&
-                            rx_msg.data[2] == 0xF1 &&
-                            rx_msg.data[3] == 0x99) {
-                            break;
-                        }
-                    }
-
-                    twai_message_t read_coding;
-                    memset(&read_coding, 0, sizeof(read_coding));
-                    read_coding.identifier = SEED_REQUEST_ID;
-                    read_coding.extd = 0;
-                    read_coding.rtr = 0;
-                    read_coding.data_length_code = 8;
-                    read_coding.data[0] = 0x03;
-                    read_coding.data[1] = 0x22;
-                    read_coding.data[2] = 0x06;
-                    read_coding.data[3] = 0x00;
-                    read_coding.data[4] = 0xFF;
-                    read_coding.data[5] = 0xFF;
-                    read_coding.data[6] = 0xFF;
-                    read_coding.data[7] = 0xFF;
-
-                    if (twai_transmit(&read_coding, pdMS_TO_TICKS(100)) == ESP_OK) {
-                        ESP_LOGI(TAG, "  -> CAN Transmit: ID 0x%03X (22 06 00)", SEED_REQUEST_ID);
-                    } else {
-                        ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03X (22 06 00)", SEED_REQUEST_ID);
-                        return false;
-                    }
-
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) {
-                            continue;
-                        }
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code == 8 &&
-                            rx_msg.data[0] == 0x07 &&
-                            rx_msg.data[1] == 0x62 &&
-                            rx_msg.data[2] == 0x06 &&
-                            rx_msg.data[3] == 0x00) {
-                            snprintf(last_rx_line, sizeof(last_rx_line),
-                                     "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
-                                     (unsigned long)rx_msg.identifier,
-                                     rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
-                                     rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
-                            last_rx_valid = true;
-                            return true;
-                        }
-                    }
-
-                    return true;
-                }
-            }
-        }
-    }
-}
 
 static void drain_rx_queue(void) {
     twai_message_t rx_msg;
@@ -452,10 +203,10 @@ static uint32_t parse_can_id(cJSON *item) {
 /* CAN Transmission Logic (returns true if access OK on action1/step0) */
 static bool transmit_can_step(const char *action_key, int step_idx) {
     bool access_ok = false;
-    bool step2_ok = false;
     bool step2_action2_ok = false;
     bool step3_action2_ok = false;
     bool step4_action2_ok = false;
+    bool step_action1_ok = false;
     const char *json_data = (const char *)can_frames_json_start;
     cJSON *root = cJSON_ParseWithLength(json_data, can_frames_json_end - can_frames_json_start);
     if (!root) {
@@ -480,49 +231,56 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                 }
 
                 bool seed_request_tx_ok = false;
-                for (int i = 0; i < frames_count; i++) {
-                    cJSON *frame_obj = cJSON_GetArrayItem(frames_array, i);
-                    cJSON *id_item = cJSON_GetObjectItem(frame_obj, "id");
-                    uint32_t id = parse_can_id(id_item);
-                    cJSON *data_arr = cJSON_GetObjectItem(frame_obj, "data");
-                    uint8_t dlc = (uint8_t)(cJSON_GetObjectItem(frame_obj, "dlc")->valueint & 0x0F);
-                    int delay = cJSON_GetObjectItem(frame_obj, "delay_ms")->valueint;
+                bool skip_auto_send =
+                    (strcmp(action_key, "action1") == 0 && (step_idx == 2 || step_idx == 3 || step_idx == 4)) ||
+                    (strcmp(action_key, "action2") == 0 && (step_idx == 1 || step_idx == 3));
 
-                    twai_message_t message;
-                    memset(&message, 0, sizeof(message));
-                    message.identifier = id;
-                    message.extd = 0;
-                    message.rtr = 0;   /* 0 = data frame (con payload); 1 = RTR (sin datos) */
-                    message.data_length_code = dlc;
-                    for (int j = 0; j < dlc && j < 8; j++) {
-                        cJSON *item = cJSON_GetArrayItem(data_arr, j);
-                        message.data[j] = (uint8_t)parse_can_id_or_byte(item);
+                if (!skip_auto_send) {
+                    for (int i = 0; i < frames_count; i++) {
+                        cJSON *frame_obj = cJSON_GetArrayItem(frames_array, i);
+                        cJSON *id_item = cJSON_GetObjectItem(frame_obj, "id");
+                        uint32_t id = parse_can_id(id_item);
+                        cJSON *data_arr = cJSON_GetObjectItem(frame_obj, "data");
+                        uint8_t dlc = (uint8_t)(cJSON_GetObjectItem(frame_obj, "dlc")->valueint & 0x0F);
+                        int delay = cJSON_GetObjectItem(frame_obj, "delay_ms")->valueint;
+
+                        twai_message_t message;
+                        memset(&message, 0, sizeof(message));
+                        message.identifier = id;
+                        message.extd = 0;
+                        message.rtr = 0;   /* 0 = data frame (con payload); 1 = RTR (sin datos) */
+                        message.data_length_code = dlc;
+                        for (int j = 0; j < dlc && j < 8; j++) {
+                            cJSON *item = cJSON_GetArrayItem(data_arr, j);
+                            message.data[j] = (uint8_t)parse_can_id_or_byte(item);
+                        }
+
+                        if (strcmp(action_key, "action1") == 0 && step_idx == 1 &&
+                            id == SEED_REQUEST_ID && dlc >= 5 && pending_xx_valid) {
+                            message.data[4] = pending_xx;
+                        }
+
+                        bool tx_ok = (twai_transmit(&message, pdMS_TO_TICKS(100)) == ESP_OK);
+                        if (tx_ok) {
+                            ESP_LOGI(TAG, "  -> CAN Transmit: ID 0x%03lX", id);
+                        } else {
+                            ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03lX", id);
+                        }
+
+                        if ((strcmp(action_key, "action1") == 0 || strcmp(action_key, "action2") == 0) &&
+                            step_idx == 0 && id == SEED_REQUEST_ID && dlc >= 3 &&
+                            message.data[0] == 0x02 && message.data[1] == 0x27 &&
+                            message.data[2] == 0x03) {
+                            seed_request_tx_ok = tx_ok;
+                        }
+
+                        if (delay > 0) vTaskDelay(pdMS_TO_TICKS(delay));
                     }
-
-                    if (strcmp(action_key, "action1") == 0 && step_idx == 1 &&
-                        id == SEED_REQUEST_ID && dlc >= 5 && pending_xx_valid) {
-                        message.data[4] = pending_xx;
-                    }
-
-                    bool tx_ok = (twai_transmit(&message, pdMS_TO_TICKS(100)) == ESP_OK);
-                    if (tx_ok) {
-                        ESP_LOGI(TAG, "  -> CAN Transmit: ID 0x%03lX", id);
-                    } else {
-                        ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03lX", id);
-                    }
-
-                    if ((strcmp(action_key, "action1") == 0 || strcmp(action_key, "action2") == 0) &&
-                        step_idx == 0 && id == SEED_REQUEST_ID && dlc >= 3 &&
-                        message.data[0] == 0x02 && message.data[1] == 0x27 &&
-                        message.data[2] == 0x03) {
-                        seed_request_tx_ok = tx_ok;
-                    }
-
-                    if (delay > 0) vTaskDelay(pdMS_TO_TICKS(delay));
                 }
 
                 if ((strcmp(action_key, "action1") == 0 || strcmp(action_key, "action2") == 0) &&
                     step_idx == 0) {
+                    ESP_LOGI(TAG, "[%s] Paso 1: esperando acceso (67 04)", action_key);
                     if (!seed_request_tx_ok) {
                         seed_request_tx_ok = send_seed_request_frame();
                     }
@@ -539,58 +297,207 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                 }
 
                 if (strcmp(action_key, "action1") == 0 && step_idx == 1) {
+                    ESP_LOGI(TAG, "[action1] Paso 2: esperando 6E 06 00");
                     drain_rx_queue();
                     last_rx_valid = false;
-                    if (wait_for_step2_response()) {
-                        step2_ok = true;
+                    twai_message_t rx_msg;
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code >= 4 &&
+                            rx_msg.data[0] == 0x03 &&
+                            rx_msg.data[1] == 0x6E &&
+                            rx_msg.data[2] == 0x06 &&
+                            rx_msg.data[3] == 0x00) {
+                            step_action1_ok = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (strcmp(action_key, "action1") == 0 && step_idx == 2) {
+                    ESP_LOGI(TAG, "[action1] Paso 3: reset y sesion");
+                    drain_rx_queue();
+                    last_rx_valid = false;
+                    const uint8_t reset_req[8] = {0x02,0x11,0x02,0xFF,0xFF,0xFF,0xFF,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, reset_req);
+
+                    bool got_reset_ok = false;
+                    twai_message_t rx_msg;
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code >= 4 &&
+                            rx_msg.data[0] == 0x03 &&
+                            rx_msg.data[1] == 0x7F &&
+                            rx_msg.data[2] == 0x11 &&
+                            rx_msg.data[3] == 0x78) {
+                            continue;
+                        }
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code >= 3 &&
+                            rx_msg.data[0] == 0x02 &&
+                            rx_msg.data[1] == 0x51 &&
+                            rx_msg.data[2] == 0x02) {
+                            got_reset_ok = true;
+                            break;
+                        }
+                    }
+
+                    if (got_reset_ok) {
+                        const uint8_t tester_present[8] = {0x02,0x3E,0x00,0xFF,0xFF,0xFF,0xFF,0xFF};
+                        const uint8_t diag_session[8] = {0x02,0x10,0x03,0xFF,0xFF,0xFF,0xFF,0xFF};
+                        send_can_frame(SEED_REQUEST_ID, tester_present);
+                        send_can_frame(SEED_REQUEST_ID, diag_session);
+                        step_action1_ok = true;
+                    }
+                }
+
+                if (strcmp(action_key, "action1") == 0 && step_idx == 3) {
+                    ESP_LOGI(TAG, "[action1] Paso 4: fingerprint y fecha");
+                    drain_rx_queue();
+                    last_rx_valid = false;
+                    const uint8_t f198_ff[8] = {0x10,0x09,0x2E,0xF1,0x98,0x0A,0x2C,0x2F};
+                    send_can_frame(SEED_REQUEST_ID, f198_ff);
+
+                    twai_message_t rx_msg;
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code >= 3 &&
+                            rx_msg.data[0] == 0x30 &&
+                            rx_msg.data[1] == 0x0F &&
+                            rx_msg.data[2] == 0x03) {
+                            break;
+                        }
+                    }
+
+                    const uint8_t f198_cf[8] = {0x21,0xCF,0x86,0x9F,0xFF,0xFF,0xFF,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, f198_cf);
+
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code >= 4 &&
+                            rx_msg.data[0] == 0x03 &&
+                            rx_msg.data[1] == 0x6E &&
+                            rx_msg.data[2] == 0xF1 &&
+                            rx_msg.data[3] == 0x98) {
+                            break;
+                        }
+                    }
+
+                    const uint8_t f199_req[8] = {0x06,0x2E,0xF1,0x99,0x26,0x03,0x06,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, f199_req);
+
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code >= 4 &&
+                            rx_msg.data[0] == 0x03 &&
+                            rx_msg.data[1] == 0x6E &&
+                            rx_msg.data[2] == 0xF1 &&
+                            rx_msg.data[3] == 0x99) {
+                            step_action1_ok = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (strcmp(action_key, "action1") == 0 && step_idx == 4) {
+                    ESP_LOGI(TAG, "[action1] Paso 5: verificacion");
+                    drain_rx_queue();
+                    last_rx_valid = false;
+                    const uint8_t read_req[8] = {0x03,0x22,0x06,0x00,0xFF,0xFF,0xFF,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, read_req);
+
+                    twai_message_t rx_msg;
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code == 8 &&
+                            rx_msg.data[0] == 0x07 &&
+                            rx_msg.data[1] == 0x62 &&
+                            rx_msg.data[2] == 0x06 &&
+                            rx_msg.data[3] == 0x00 &&
+                            (!pending_xx_valid || rx_msg.data[4] == pending_xx) &&
+                            rx_msg.data[5] == 0x1F &&
+                            rx_msg.data[6] == 0x00 &&
+                            rx_msg.data[7] == 0x00) {
+                            snprintf(last_rx_line, sizeof(last_rx_line),
+                                     "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
+                                     (unsigned long)rx_msg.identifier,
+                                     rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
+                                     rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
+                            last_rx_valid = true;
+                            step_action1_ok = true;
+                            break;
+                        }
                     }
                 }
 
                 if (strcmp(action_key, "action2") == 0 && step_idx == 1) {
+                    ESP_LOGI(TAG, "[action2] Paso 2: esperando 62 18 1B FF/CF y 71 01/71 03");
+                    drain_rx_queue();
+                    last_rx_valid = false;
                     twai_message_t rx_msg;
-                    bool got_181b_ff = false;
-                    bool got_181b_cf = false;
-                    bool got_71_01 = false;
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) {
-                            continue;
-                        }
 
-                        if (!got_181b_ff &&
-                            rx_msg.identifier == SEED_RESPONSE_ID &&
+                    const uint8_t read_181b[8] = {0x03,0x22,0x18,0x1B,0xFF,0xFF,0xFF,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, read_181b);
+
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
                             rx_msg.data_length_code == 8 &&
                             rx_msg.data[0] == 0x10 &&
-                            rx_msg.data[1] == 0x09 &&
+                            rx_msg.data[1] == 0x08 &&
                             rx_msg.data[2] == 0x62 &&
                             rx_msg.data[3] == 0x18 &&
-                            rx_msg.data[4] == 0x1B) {
-                            got_181b_ff = true;
-                            continue;
+                            rx_msg.data[4] == 0x1B &&
+                            rx_msg.data[5] == 0x01 &&
+                            rx_msg.data[6] == 0x01 &&
+                            rx_msg.data[7] == 0x01) {
+                            break;
                         }
+                    }
 
-                        if (got_181b_ff && !got_181b_cf &&
-                            rx_msg.identifier == SEED_RESPONSE_ID &&
+                    const uint8_t fc_181b[8] = {0x30,0x00,0x00,0xFF,0xFF,0xFF,0xFF,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, fc_181b);
+
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
                             rx_msg.data_length_code == 8 &&
-                            rx_msg.data[0] == 0x21) {
-                            got_181b_cf = true;
-                            continue;
+                            rx_msg.data[0] == 0x21 &&
+                            rx_msg.data[1] == 0x01 &&
+                            rx_msg.data[2] == 0x01) {
+                            break;
                         }
+                    }
 
-                        if (got_181b_cf && !got_71_01 &&
-                            rx_msg.identifier == SEED_RESPONSE_ID &&
+                    const uint8_t routine_01[8] = {0x04,0x31,0x01,0x04,0x16,0xFF,0xFF,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, routine_01);
+
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
                             rx_msg.data_length_code == 8 &&
                             rx_msg.data[0] == 0x04 &&
                             rx_msg.data[1] == 0x71 &&
                             rx_msg.data[2] == 0x01 &&
                             rx_msg.data[3] == 0x04 &&
                             rx_msg.data[4] == 0x16) {
-                            got_71_01 = true;
-                            continue;
+                            break;
                         }
+                    }
 
-                        if (got_71_01 &&
-                            rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code >= 6 &&
+                    const uint8_t routine_03[8] = {0x04,0x31,0x03,0x04,0x16,0xFF,0xFF,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, routine_03);
+
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code == 8 &&
                             rx_msg.data[0] == 0x07 &&
                             rx_msg.data[1] == 0x71 &&
                             rx_msg.data[2] == 0x03 &&
@@ -601,10 +508,7 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                                      "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
                                      (unsigned long)rx_msg.identifier,
                                      rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
-                                     (rx_msg.data_length_code > 4 ? rx_msg.data[4] : 0x00),
-                                     (rx_msg.data_length_code > 5 ? rx_msg.data[5] : 0x00),
-                                     (rx_msg.data_length_code > 6 ? rx_msg.data[6] : 0x00),
-                                     (rx_msg.data_length_code > 7 ? rx_msg.data[7] : 0x00));
+                                     rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
                             last_rx_valid = true;
                             step2_action2_ok = true;
                             break;
@@ -613,6 +517,7 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                 }
 
                 if (strcmp(action_key, "action2") == 0 && step_idx == 2) {
+                    ESP_LOGI(TAG, "[action2] Paso 3: polling 22 18 16 (400ms)");
                     twai_message_t rx_msg;
                     for (;;) {
                         twai_message_t poll_msg;
@@ -683,11 +588,49 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                 }
 
                 if (strcmp(action_key, "action2") == 0 && step_idx == 3) {
+                    ESP_LOGI(TAG, "[action2] Paso 4: esperando 62 19 23");
+                    drain_rx_queue();
+                    last_rx_valid = false;
                     twai_message_t rx_msg;
+
+                    const uint8_t routine_02[8] = {0x04,0x31,0x02,0x04,0x16,0xFF,0xFF,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, routine_02);
+
                     for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) {
-                            continue;
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code == 8 &&
+                            rx_msg.data[0] == 0x04 &&
+                            rx_msg.data[1] == 0x71 &&
+                            rx_msg.data[2] == 0x02 &&
+                            rx_msg.data[3] == 0x04 &&
+                            rx_msg.data[4] == 0x16) {
+                            break;
                         }
+                    }
+
+                    const uint8_t routine_03b[8] = {0x04,0x31,0x03,0x04,0x16,0xFF,0xFF,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, routine_03b);
+
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code == 8 &&
+                            rx_msg.data[0] == 0x07 &&
+                            rx_msg.data[1] == 0x71 &&
+                            rx_msg.data[2] == 0x03 &&
+                            rx_msg.data[3] == 0x04 &&
+                            rx_msg.data[4] == 0x16 &&
+                            rx_msg.data[5] == 0x02) {
+                            break;
+                        }
+                    }
+
+                    const uint8_t read_1923[8] = {0x03,0x22,0x19,0x23,0xFF,0xFF,0xFF,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, read_1923);
+
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
                         if (rx_msg.identifier == SEED_RESPONSE_ID &&
                             rx_msg.data_length_code == 8 &&
                             rx_msg.data[0] == 0x10 &&
@@ -695,48 +638,72 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                             rx_msg.data[2] == 0x62 &&
                             rx_msg.data[3] == 0x19 &&
                             rx_msg.data[4] == 0x23 &&
-                            rx_msg.data[5] == 0x01) {
-                            snprintf(last_rx_line, sizeof(last_rx_line),
-                                     "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
-                                     (unsigned long)rx_msg.identifier,
-                                     rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
-                                     rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
-                            last_rx_valid = true;
-
-                            twai_message_t clear_msg;
-                            memset(&clear_msg, 0, sizeof(clear_msg));
-                            clear_msg.identifier = SEED_REQUEST_ID;
-                            clear_msg.extd = 0;
-                            clear_msg.rtr = 0;
-                            clear_msg.data_length_code = 8;
-                            clear_msg.data[0] = 0x04;
-                            clear_msg.data[1] = 0x14;
-                            clear_msg.data[2] = 0xFF;
-                            clear_msg.data[3] = 0xFF;
-                            clear_msg.data[4] = 0xFF;
-                            clear_msg.data[5] = 0xFF;
-                            clear_msg.data[6] = 0xFF;
-                            clear_msg.data[7] = 0xFF;
-
-                            if (twai_transmit(&clear_msg, pdMS_TO_TICKS(100)) == ESP_OK) {
-                                ESP_LOGI(TAG, "  -> CAN Transmit: ID 0x%03X (14)", SEED_REQUEST_ID);
-                                step4_action2_ok = true;
-                                break;
-                            }
-
-                            ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03X (14)", SEED_REQUEST_ID);
+                            rx_msg.data[5] == 0x01 &&
+                            rx_msg.data[6] == 0x00 &&
+                            rx_msg.data[7] == 0x28) {
                             break;
                         }
+                    }
+
+                    const uint8_t fc_1923[8] = {0x30,0x00,0x00,0xFF,0xFF,0xFF,0xFF,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, fc_1923);
+
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code == 8 &&
+                            rx_msg.data[0] == 0x21 &&
+                            rx_msg.data[1] == 0x64 &&
+                            rx_msg.data[2] == 0xD7 &&
+                            rx_msg.data[3] == 0xE2) {
+                            break;
+                        }
+                    }
+
+                    const uint8_t clear_msg[8] = {0x04,0x14,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, clear_msg);
+
+                    bool got_dtc_ok = false;
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code >= 4 &&
+                            rx_msg.data[0] == 0x03 &&
+                            rx_msg.data[1] == 0x7F &&
+                            rx_msg.data[2] == 0x14 &&
+                            rx_msg.data[3] == 0x78) {
+                            continue;
+                        }
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code >= 2 &&
+                            rx_msg.data[0] == 0x01 &&
+                            rx_msg.data[1] == 0x54) {
+                            got_dtc_ok = true;
+                            break;
+                        }
+                    }
+
+                    if (got_dtc_ok) {
+                        snprintf(last_rx_line, sizeof(last_rx_line),
+                                 "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
+                                 (unsigned long)rx_msg.identifier,
+                                 rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
+                                 (rx_msg.data_length_code > 4 ? rx_msg.data[4] : 0x00),
+                                 (rx_msg.data_length_code > 5 ? rx_msg.data[5] : 0x00),
+                                 (rx_msg.data_length_code > 6 ? rx_msg.data[6] : 0x00),
+                                 (rx_msg.data_length_code > 7 ? rx_msg.data[7] : 0x00));
+                        last_rx_valid = true;
+                        step4_action2_ok = true;
                     }
                 }
             }
         }
     }
     cJSON_Delete(root);
-    if (step_idx == 1) {
-        if (strcmp(action_key, "action1") == 0) return step2_ok;
-        if (strcmp(action_key, "action2") == 0) return step2_action2_ok;
+    if (strcmp(action_key, "action1") == 0 && step_idx >= 1 && step_idx <= 4) {
+        return step_action1_ok;
     }
+    if (step_idx == 1 && strcmp(action_key, "action2") == 0) return step2_action2_ok;
     if (step_idx == 2 && strcmp(action_key, "action2") == 0) return step3_action2_ok;
     if (step_idx == 3 && strcmp(action_key, "action2") == 0) return step4_action2_ok;
     return access_ok;

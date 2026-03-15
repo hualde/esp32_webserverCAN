@@ -196,8 +196,8 @@ async function executeStep() {
                 } else {
                     btn.disabled = false;
                 }
-            } else if ((currentActionKey === 'action1' && currentStepIdx === 1) ||
-                       (currentActionKey === 'action2' && (currentStepIdx === 1 || currentStepIdx === 2))) {
+            } else if ((currentActionKey === 'action1' && (currentStepIdx >= 1 && currentStepIdx <= 4)) ||
+                       (currentActionKey === 'action2' && (currentStepIdx === 1 || currentStepIdx === 2 || currentStepIdx === 3))) {
                 if (data && data.step_ok) {
                     if (currentStepIdx < action.steps.length - 1) {
                         currentStepIdx++;
