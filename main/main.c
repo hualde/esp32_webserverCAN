@@ -453,6 +453,9 @@ static uint32_t parse_can_id(cJSON *item) {
 static bool transmit_can_step(const char *action_key, int step_idx) {
     bool access_ok = false;
     bool step2_ok = false;
+    bool step2_action2_ok = false;
+    bool step3_action2_ok = false;
+    bool step4_action2_ok = false;
     const char *json_data = (const char *)can_frames_json_start;
     cJSON *root = cJSON_ParseWithLength(json_data, can_frames_json_end - can_frames_json_start);
     if (!root) {
@@ -542,11 +545,137 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                         step2_ok = true;
                     }
                 }
+
+                if (strcmp(action_key, "action2") == 0 && step_idx == 1) {
+                    twai_message_t rx_msg;
+                    bool got_resp_71_01 = false;
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) {
+                            continue;
+                        }
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code == 8 &&
+                            rx_msg.data[0] == 0x04 &&
+                            rx_msg.data[1] == 0x71 &&
+                            rx_msg.data[2] == 0x01 &&
+                            rx_msg.data[3] == 0x04 &&
+                            rx_msg.data[4] == 0x16 &&
+                            rx_msg.data[5] == 0xAA &&
+                            rx_msg.data[6] == 0xAA &&
+                            rx_msg.data[7] == 0xAA) {
+                            got_resp_71_01 = true;
+                            continue;
+                        }
+
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code >= 6 &&
+                            rx_msg.data[0] == 0x07 &&
+                            rx_msg.data[1] == 0x71 &&
+                            rx_msg.data[2] == 0x03 &&
+                            rx_msg.data[3] == 0x04 &&
+                            rx_msg.data[4] == 0x16 &&
+                            rx_msg.data[5] == 0x01) {
+                            snprintf(last_rx_line, sizeof(last_rx_line),
+                                     "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
+                                     (unsigned long)rx_msg.identifier,
+                                     rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
+                                     (rx_msg.data_length_code > 4 ? rx_msg.data[4] : 0x00),
+                                     (rx_msg.data_length_code > 5 ? rx_msg.data[5] : 0x00),
+                                     (rx_msg.data_length_code > 6 ? rx_msg.data[6] : 0x00),
+                                     (rx_msg.data_length_code > 7 ? rx_msg.data[7] : 0x00));
+                            last_rx_valid = true;
+                            step2_action2_ok = got_resp_71_01;
+                            break;
+                        }
+                    }
+                }
+
+                if (strcmp(action_key, "action2") == 0 && step_idx == 2) {
+                    twai_message_t rx_msg;
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) {
+                            continue;
+                        }
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code == 8 &&
+                            rx_msg.data[0] == 0x07 &&
+                            rx_msg.data[1] == 0x62 &&
+                            rx_msg.data[2] == 0x18 &&
+                            rx_msg.data[3] == 0x16 &&
+                            rx_msg.data[4] == 0x00 &&
+                            rx_msg.data[5] == 0x00 &&
+                            rx_msg.data[6] == 0x01 &&
+                            rx_msg.data[7] == 0x00) {
+                            snprintf(last_rx_line, sizeof(last_rx_line),
+                                     "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
+                                     (unsigned long)rx_msg.identifier,
+                                     rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
+                                     rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
+                            last_rx_valid = true;
+                            step3_action2_ok = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (strcmp(action_key, "action2") == 0 && step_idx == 3) {
+                    twai_message_t rx_msg;
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) {
+                            continue;
+                        }
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code == 8 &&
+                            rx_msg.data[0] == 0x10 &&
+                            rx_msg.data[1] == 0x09 &&
+                            rx_msg.data[2] == 0x62 &&
+                            rx_msg.data[3] == 0x19 &&
+                            rx_msg.data[4] == 0x23 &&
+                            rx_msg.data[5] == 0x01) {
+                            snprintf(last_rx_line, sizeof(last_rx_line),
+                                     "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
+                                     (unsigned long)rx_msg.identifier,
+                                     rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
+                                     rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
+                            last_rx_valid = true;
+
+                            twai_message_t clear_msg;
+                            memset(&clear_msg, 0, sizeof(clear_msg));
+                            clear_msg.identifier = SEED_REQUEST_ID;
+                            clear_msg.extd = 0;
+                            clear_msg.rtr = 0;
+                            clear_msg.data_length_code = 8;
+                            clear_msg.data[0] = 0x04;
+                            clear_msg.data[1] = 0x14;
+                            clear_msg.data[2] = 0xFF;
+                            clear_msg.data[3] = 0xFF;
+                            clear_msg.data[4] = 0xFF;
+                            clear_msg.data[5] = 0xFF;
+                            clear_msg.data[6] = 0xFF;
+                            clear_msg.data[7] = 0xFF;
+
+                            if (twai_transmit(&clear_msg, pdMS_TO_TICKS(100)) == ESP_OK) {
+                                ESP_LOGI(TAG, "  -> CAN Transmit: ID 0x%03X (14)", SEED_REQUEST_ID);
+                                step4_action2_ok = true;
+                                break;
+                            }
+
+                            ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03X (14)", SEED_REQUEST_ID);
+                            break;
+                        }
+                    }
+                }
             }
         }
     }
     cJSON_Delete(root);
-    return (step_idx == 1) ? step2_ok : access_ok;
+    if (step_idx == 1) {
+        if (strcmp(action_key, "action1") == 0) return step2_ok;
+        if (strcmp(action_key, "action2") == 0) return step2_action2_ok;
+    }
+    if (step_idx == 2 && strcmp(action_key, "action2") == 0) return step3_action2_ok;
+    if (step_idx == 3 && strcmp(action_key, "action2") == 0) return step4_action2_ok;
+    return access_ok;
 }
 
 static esp_err_t last_rx_get_handler(httpd_req_t *req) {

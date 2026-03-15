@@ -103,12 +103,74 @@
             },
             {
                 "description": {
-                    "es": "Paso 2: (pendiente)",
-                    "en": "Step 2: (pending)",
-                    "fr": "Étape 2 : (en attente)",
-                    "de": "Schritt 2: (ausstehend)"
+                    "es": "Paso 2: Lectura de parámetros",
+                    "en": "Step 2: Read parameters",
+                    "fr": "Étape 2 : Lecture des paramètres",
+                    "de": "Schritt 2: Parameter lesen"
+                },
+                "frames": [
+                    {
+                        "id": "712",
+                        "data": ["0x03", "0x22", "0x18", "0x1B", "0xFF", "0xFF", "0xFF", "0xFF"],
+                        "dlc": 8,
+                        "delay_ms": 50
+                    },
+                    {
+                        "id": "712",
+                        "data": ["0x30", "0x00", "0x00", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF"],
+                        "dlc": 8,
+                        "delay_ms": 50
+                    },
+                    {
+                        "id": "712",
+                        "data": ["0x04", "0x31", "0x01", "0x04", "0x16", "0xFF", "0xFF", "0xFF"],
+                        "dlc": 8,
+                        "delay_ms": 50
+                    },
+                    {
+                        "id": "712",
+                        "data": ["0x04", "0x31", "0x03", "0x04", "0x16", "0xFF", "0xFF", "0xFF"],
+                        "dlc": 8,
+                        "delay_ms": 50
+                    }
+                ]
+            },
+            {
+                "description": {
+                    "es": "Paso 3: Llevar a topes y centrar",
+                    "en": "Step 3: Move to endstops and center",
+                    "fr": "Étape 3 : Aller aux butées et centrer",
+                    "de": "Schritt 3: Endanschläge und zentrieren"
                 },
                 "frames": []
+            },
+            {
+                "description": {
+                    "es": "Paso 4: (pendiente)",
+                    "en": "Step 4: (pending)",
+                    "fr": "Étape 4 : (en attente)",
+                    "de": "Schritt 4: (ausstehend)"
+                },
+                "frames": [
+                    {
+                        "id": "712",
+                        "data": ["0x04", "0x31", "0x02", "0x04", "0x16", "0xFF", "0xFF", "0xFF"],
+                        "dlc": 8,
+                        "delay_ms": 50
+                    },
+                    {
+                        "id": "712",
+                        "data": ["0x04", "0x31", "0x03", "0x04", "0x16", "0xFF", "0xFF", "0xFF"],
+                        "dlc": 8,
+                        "delay_ms": 50
+                    },
+                    {
+                        "id": "712",
+                        "data": ["0x03", "0x22", "0x19", "0x23", "0xFF", "0xFF", "0xFF", "0xFF"],
+                        "dlc": 8,
+                        "delay_ms": 50
+                    }
+                ]
             }
         ]
     }
