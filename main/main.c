@@ -548,26 +548,48 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
 
                 if (strcmp(action_key, "action2") == 0 && step_idx == 1) {
                     twai_message_t rx_msg;
-                    bool got_resp_71_01 = false;
+                    bool got_181b_ff = false;
+                    bool got_181b_cf = false;
+                    bool got_71_01 = false;
                     for (;;) {
                         if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) {
                             continue;
                         }
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+
+                        if (!got_181b_ff &&
+                            rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code == 8 &&
+                            rx_msg.data[0] == 0x10 &&
+                            rx_msg.data[1] == 0x09 &&
+                            rx_msg.data[2] == 0x62 &&
+                            rx_msg.data[3] == 0x18 &&
+                            rx_msg.data[4] == 0x1B) {
+                            got_181b_ff = true;
+                            continue;
+                        }
+
+                        if (got_181b_ff && !got_181b_cf &&
+                            rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code == 8 &&
+                            rx_msg.data[0] == 0x21) {
+                            got_181b_cf = true;
+                            continue;
+                        }
+
+                        if (got_181b_cf && !got_71_01 &&
+                            rx_msg.identifier == SEED_RESPONSE_ID &&
                             rx_msg.data_length_code == 8 &&
                             rx_msg.data[0] == 0x04 &&
                             rx_msg.data[1] == 0x71 &&
                             rx_msg.data[2] == 0x01 &&
                             rx_msg.data[3] == 0x04 &&
-                            rx_msg.data[4] == 0x16 &&
-                            rx_msg.data[5] == 0xAA &&
-                            rx_msg.data[6] == 0xAA &&
-                            rx_msg.data[7] == 0xAA) {
-                            got_resp_71_01 = true;
+                            rx_msg.data[4] == 0x16) {
+                            got_71_01 = true;
                             continue;
                         }
 
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                        if (got_71_01 &&
+                            rx_msg.identifier == SEED_RESPONSE_ID &&
                             rx_msg.data_length_code >= 6 &&
                             rx_msg.data[0] == 0x07 &&
                             rx_msg.data[1] == 0x71 &&
@@ -584,7 +606,7 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                                      (rx_msg.data_length_code > 6 ? rx_msg.data[6] : 0x00),
                                      (rx_msg.data_length_code > 7 ? rx_msg.data[7] : 0x00));
                             last_rx_valid = true;
-                            step2_action2_ok = got_resp_71_01;
+                            step2_action2_ok = true;
                             break;
                         }
                     }
@@ -593,28 +615,70 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                 if (strcmp(action_key, "action2") == 0 && step_idx == 2) {
                     twai_message_t rx_msg;
                     for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) {
-                            continue;
+                        twai_message_t poll_msg;
+                        memset(&poll_msg, 0, sizeof(poll_msg));
+                        poll_msg.identifier = SEED_REQUEST_ID;
+                        poll_msg.extd = 0;
+                        poll_msg.rtr = 0;
+                        poll_msg.data_length_code = 8;
+                        poll_msg.data[0] = 0x03;
+                        poll_msg.data[1] = 0x22;
+                        poll_msg.data[2] = 0x18;
+                        poll_msg.data[3] = 0x16;
+                        poll_msg.data[4] = 0xFF;
+                        poll_msg.data[5] = 0xFF;
+                        poll_msg.data[6] = 0xFF;
+                        poll_msg.data[7] = 0xFF;
+
+                        if (twai_transmit(&poll_msg, pdMS_TO_TICKS(100)) != ESP_OK) {
+                            ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03X (22 18 16)", SEED_REQUEST_ID);
                         }
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code == 8 &&
-                            rx_msg.data[0] == 0x07 &&
-                            rx_msg.data[1] == 0x62 &&
-                            rx_msg.data[2] == 0x18 &&
-                            rx_msg.data[3] == 0x16 &&
-                            rx_msg.data[4] == 0x00 &&
-                            rx_msg.data[5] == 0x00 &&
-                            rx_msg.data[6] == 0x01 &&
-                            rx_msg.data[7] == 0x00) {
-                            snprintf(last_rx_line, sizeof(last_rx_line),
-                                     "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
-                                     (unsigned long)rx_msg.identifier,
-                                     rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
-                                     rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
-                            last_rx_valid = true;
-                            step3_action2_ok = true;
-                            break;
+
+                        TickType_t start = xTaskGetTickCount();
+                        TickType_t window = pdMS_TO_TICKS(400);
+                        while ((xTaskGetTickCount() - start) < window) {
+                            if (twai_receive(&rx_msg, pdMS_TO_TICKS(50)) != ESP_OK) {
+                                continue;
+                            }
+                            if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                                rx_msg.data_length_code == 8 &&
+                                rx_msg.data[0] == 0x07 &&
+                                rx_msg.data[1] == 0x62 &&
+                                rx_msg.data[2] == 0x18 &&
+                                rx_msg.data[3] == 0x16 &&
+                                rx_msg.data[4] == 0x00 &&
+                                rx_msg.data[5] == 0x01 &&
+                                rx_msg.data[6] == 0x01 &&
+                                rx_msg.data[7] == 0x01) {
+                                snprintf(last_rx_line, sizeof(last_rx_line),
+                                         "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
+                                         (unsigned long)rx_msg.identifier,
+                                         rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
+                                         rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
+                                last_rx_valid = true;
+                                continue;
+                            }
+                            if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                                rx_msg.data_length_code == 8 &&
+                                rx_msg.data[0] == 0x07 &&
+                                rx_msg.data[1] == 0x62 &&
+                                rx_msg.data[2] == 0x18 &&
+                                rx_msg.data[3] == 0x16 &&
+                                rx_msg.data[4] == 0x00 &&
+                                rx_msg.data[5] == 0x00 &&
+                                rx_msg.data[6] == 0x01 &&
+                                rx_msg.data[7] == 0x00) {
+                                snprintf(last_rx_line, sizeof(last_rx_line),
+                                         "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
+                                         (unsigned long)rx_msg.identifier,
+                                         rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
+                                         rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
+                                last_rx_valid = true;
+                                step3_action2_ok = true;
+                                break;
+                            }
                         }
+                        if (step3_action2_ok) break;
                     }
                 }
 

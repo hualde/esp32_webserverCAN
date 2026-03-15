@@ -67,5 +67,89 @@ Para cambiar las tramas que se envían al pulsar los botones, edita el archivo `
 *   `data`: Bytes en decimal o en hex como string (ej. `"0x02"`, `"0xC0"`).
 *   `delay_ms`: Pausa en ms tras enviar la trama.
 
+## 🧭 Flujo de Acciones (tramas por paso)
+
+> Nota: `can_frames.json` está embebido en el firmware. Tras cambiarlo, recompila y flashea.
+
+### Acción 1 — Codificación
+
+**Paso 1 (seguridad UDS)**
+- Envía (según `can_frames.json`):
+  - `712 → 02 3E 00 FF FF FF FF FF`
+  - `712 → 02 10 03 FF FF FF FF FF`
+  - `712 → 04 14 FF FF FF FF FF FF`
+  - `712 → 02 27 03 FF FF FF FF FF`
+- Recibe seed: `77C → 06 67 03 B1 B2 B3 B4`
+- Calcula key: `key = seed + 0x4B31`
+- Envía key: `712 → 06 27 04 K1 K2 K3 K4 FF`
+- También acepta directamente: `77C → 02 67 04 AA AA AA AA AA`
+- Solo con esa respuesta se habilita el Paso 2.
+
+**Paso 2 (codificación + secuencia)**
+- Envía: `712 → 07 2E 06 00 XX 1F 00 00` (XX viene del selector web)
+- Espera: `77C → 03 6E 06 00`
+- Envía: `712 → 02 11 02 FF FF FF FF FF`
+- Espera: `77C → 02 51 02`
+- Envía: `712 → 02 3E 00 FF FF FF FF FF`
+- Espera 50 ms
+- Envía: `712 → 02 10 03 FF FF FF FF FF`
+- Escribir fingerprint (DID F198, multi‑frame):
+  - `712 → 10 09 2E F1 98 0A 2C 2F`
+  - Espera: `77C → 30 0F 03`
+  - `712 → 21 CF 86 9F FF FF FF FF`
+  - Espera: `77C → 03 6E F1 98`
+- Escribir coding date (DID F199):
+  - `712 → 06 2E F1 99 26 03 06 FF`
+  - Espera: `77C → 03 6E F1 99`
+- Lectura final:
+  - `712 → 03 22 06 00 FF FF FF FF`
+  - Espera: `77C → 07 62 06 00 XX XX XX XX` (XX cualquier valor)
+- La última respuesta se muestra en el debug de la web.
+
+### Acción 2 — Ajuste de los topes
+
+**Paso 1 (seguridad UDS)**
+- Envía (según `can_frames.json`):
+  - `712 → 02 3E 00 FF FF FF FF FF`
+  - `712 → 02 10 03 FF FF FF FF FF`
+  - `712 → 04 14 FF FF FF FF FF FF`
+  - `712 → 02 27 03 FF FF FF FF FF`
+- Recibe seed: `77C → 06 67 03 B1 B2 B3 B4`
+- Calcula key: `key = seed + 0x4B31`
+- Envía key: `712 → 06 27 04 K1 K2 K3 K4 FF`
+- También acepta directamente: `77C → 02 67 04 AA AA AA AA AA`
+- Solo con esa respuesta se habilita el Paso 2.
+
+**Paso 2 (secuencia de lectura + rutina)**
+- Envía:
+  - `712 → 03 22 18 1B FF FF FF FF`
+  - `712 → 30 00 00 FF FF FF FF FF`
+  - `712 → 04 31 01 04 16 FF FF FF`
+  - `712 → 04 31 03 04 16 FF FF FF`
+- Espera (en orden):
+  - `77C → 10 09 62 18 1B .. .. ..` (first frame)
+  - `77C → 21 .. .. .. .. .. ..` (consecutive frame)
+  - `77C → 04 71 01 04 16 .. .. ..`
+  - `77C → 07 71 03 04 16 01`
+- Solo con ambas respuestas se habilita el Paso 3.
+
+**Paso 3 (topes y centrado)**
+- Instrucción al usuario: llevar a tope izquierdo 3 s, tope derecho 3 s, luego centro.
+- Envia en bucle cada ~400 ms:
+  - `712 → 03 22 18 16 FF FF FF FF`
+- Mientras el usuario gira:
+  - `77C → 07 62 18 16 00 01 01 01`
+- Cuando termina:
+  - `77C → 07 62 18 16 00 00 01 00`
+- Con esa respuesta final se habilita el Paso 4.
+
+**Paso 4 (cierre del procedimiento)**
+- Envía:
+  - `712 → 04 31 02 04 16 FF FF FF`
+  - `712 → 04 31 03 04 16 FF FF FF`
+  - `712 → 03 22 19 23 FF FF FF FF`
+- Espera: `77C → 10 09 62 19 23 01 XX XX` (XX cualquier valor)
+- Si llega, envía: `712 → 04 14 FF FF FF FF FF FF`
+
 ---
 Desarrollado para integración en sistemas de diagnosis.
