@@ -111,6 +111,7 @@ function updateStepUI() {
     if (selectorCard) {
         if (currentActionKey === 'action1' && currentStepIdx === 1) {
             selectorCard.classList.remove('hidden');
+            updateCodingByte();
         } else {
             selectorCard.classList.add('hidden');
         }
@@ -153,6 +154,29 @@ async function refreshKeyDebug() {
     }
 }
 
+function getSelectedTscValue() {
+    const radios = document.querySelectorAll('input[name="tsc"]');
+    for (const r of radios) {
+        if (r.checked) return parseInt(r.value, 16);
+    }
+    return 0x00;
+}
+
+function updateCodingByte() {
+    const bit0 = document.getElementById('bit0-dsr')?.checked ? 0x01 : 0x00;
+    const bit1 = document.getElementById('bit1-parking')?.checked ? 0x02 : 0x00;
+    const tsc = getSelectedTscValue(); // 0x00, 0x04, 0x08
+    const bit4 = document.getElementById('bit4-lane')?.checked ? 0x10 : 0x00;
+    const bit5 = document.getElementById('bit5-angle')?.checked ? 0x20 : 0x00;
+    const bit7 = document.getElementById('bit7-profile')?.checked ? 0x80 : 0x00;
+
+    const value = bit0 | bit1 | tsc | bit4 | bit5 | bit7;
+    const hex = `0x${value.toString(16).toUpperCase().padStart(2, '0')}`;
+    const label = document.getElementById('xx-value');
+    if (label) label.innerText = hex;
+    return hex;
+}
+
 async function executeStep() {
     if (!currentActionKey) return;
 
@@ -164,8 +188,7 @@ async function executeStep() {
 
     let url = `/api/execute_step?action=${currentActionKey}&step=${currentStepIdx}`;
     if (currentActionKey === 'action1' && currentStepIdx === 1) {
-        const sel = document.getElementById('step2-select');
-        const selectedValue = sel ? sel.value : '';
+        const selectedValue = updateCodingByte();
         if (!selectedValue) {
             alert("Selecciona una opción");
             btn.disabled = false;
@@ -237,4 +260,24 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCanData().then(() => {
         changeLanguage();
     });
+
+    const inputs = [
+        'bit0-dsr', 'bit1-parking', 'bit4-lane', 'bit5-angle', 'bit7-profile'
+    ];
+    inputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', updateCodingByte);
+    });
+    document.querySelectorAll('input[name="tsc"]').forEach(el => {
+        el.addEventListener('change', updateCodingByte);
+    });
+
+    // Default 0x85: DSR + TSC Lernwerten + perfil conductor
+    const bit0 = document.getElementById('bit0-dsr');
+    const bit7 = document.getElementById('bit7-profile');
+    const tscLern = document.querySelector('input[name="tsc"][value="0x04"]');
+    if (bit0) bit0.checked = true;
+    if (bit7) bit7.checked = true;
+    if (tscLern) tscLern.checked = true;
+    updateCodingByte();
 });

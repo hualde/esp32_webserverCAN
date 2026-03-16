@@ -62,13 +62,56 @@
                     <span id="key-debug-value">---</span>
                 </div>
                 <div id="step2-selector" class="selector-card hidden">
-                    <label for="step2-select" class="selector-label">Selecciona opción:</label>
-                    <select id="step2-select" class="selector-input">
-                        <option value="">-- Seleccionar --</option>
-                        <option value="0x85">Opción 1</option>
-                        <option value="0x02">Opción 2</option>
-                        <option value="0x03">Opción 3</option>
-                    </select>
+                    <div class="selector-title">Configuración del byte XX</div>
+
+                    <div class="selector-group">
+                        <div class="selector-subtitle">Bits 0-1 (selección única)</div>
+                        <label class="selector-option">
+                            <input type="checkbox" id="bit0-dsr">
+                            Bit 0 — DSR (activar o no)
+                        </label>
+                        <label class="selector-option">
+                            <input type="checkbox" id="bit1-parking">
+                            Bit 1 — Asistente aparcamiento (activar o no)
+                        </label>
+                    </div>
+
+                    <div class="selector-group">
+                        <div class="selector-subtitle">Bits 2-3 (TSC, selección única)</div>
+                        <label class="selector-option">
+                            <input type="radio" name="tsc" value="0x00" checked>
+                            00 — TSC desactivado
+                        </label>
+                        <label class="selector-option">
+                            <input type="radio" name="tsc" value="0x04">
+                            04 — TSC con Lernwerten
+                        </label>
+                        <label class="selector-option">
+                            <input type="radio" name="tsc" value="0x08">
+                            08 — TSC sin ValoresApr.
+                        </label>
+                    </div>
+
+                    <div class="selector-group">
+                        <div class="selector-subtitle">Bits 4, 5 y 7 (selección múltiple)</div>
+                        <label class="selector-option">
+                            <input type="checkbox" id="bit4-lane">
+                            Bit 4 — Asistente mantenimiento carril
+                        </label>
+                        <label class="selector-option">
+                            <input type="checkbox" id="bit5-angle">
+                            Bit 5 — Sensor ángulo dirección externo
+                        </label>
+                        <label class="selector-option">
+                            <input type="checkbox" id="bit7-profile">
+                            Bit 7 — Perfil conductor activo
+                        </label>
+                    </div>
+
+                    <div class="selector-result">
+                        <span>XX:</span>
+                        <span id="xx-value">0x85</span>
+                    </div>
                 </div>
 
                 <div class="progress-bar">

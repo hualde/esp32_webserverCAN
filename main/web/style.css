@@ -209,6 +209,46 @@ footer {
     border: 1px dashed rgba(217, 1, 122, 0.2);
 }
 
+.selector-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--secondary-color);
+}
+
+.selector-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px 0;
+    border-top: 1px dashed rgba(217, 1, 122, 0.15);
+}
+
+.selector-group:first-of-type {
+    border-top: none;
+}
+
+.selector-subtitle {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-color);
+}
+
+.selector-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+}
+
+.selector-result {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    font-weight: 700;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    color: var(--secondary-color);
+}
+
 .selector-label {
     font-size: 0.85rem;
     font-weight: 600;
