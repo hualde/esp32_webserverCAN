@@ -9,10 +9,10 @@
         "steps": [
             {
                 "description": {
-                    "es": "Paso 1: Iniciando sesión de diagnóstico y desbloqueo",
-                    "en": "Step 1: Starting diagnostic session and unlocking",
-                    "fr": "Étape 1: Démarrer la session de diagnostic et déverrouillage",
-                    "de": "Schritt 1: Diagnose-Sitzung starten und entsperren"
+                    "es": "Paso 1: Sesión y desbloqueo de seguridad",
+                    "en": "Step 1: Session and security unlock",
+                    "fr": "Étape 1 : Session et déverrouillage sécurité",
+                    "de": "Schritt 1: Sitzung und Sicherheitsfreigabe"
                 },
                 "frames": [
                     {
@@ -43,10 +43,10 @@
             },
             {
                 "description": {
-                    "es": "Paso 2: Escritura coding",
-                    "en": "Step 2: Write coding",
-                    "fr": "Étape 2 : Écriture du codage",
-                    "de": "Schritt 2: Codierung schreiben"
+                    "es": "Paso 2: Escritura de coding (byte XX)",
+                    "en": "Step 2: Write coding (byte XX)",
+                    "fr": "Étape 2 : Écriture du codage (octet XX)",
+                    "de": "Schritt 2: Codierung schreiben (Byte XX)"
                 },
                 "frames": [
                     {
@@ -59,28 +59,28 @@
             },
             {
                 "description": {
-                    "es": "Paso 3: Reset y sesión",
-                    "en": "Step 3: Reset and session",
-                    "fr": "Étape 3 : Reset et session",
-                    "de": "Schritt 3: Reset und Sitzung"
+                    "es": "Paso 3: Reset y nueva sesión",
+                    "en": "Step 3: Reset and new session",
+                    "fr": "Étape 3 : Reset et nouvelle session",
+                    "de": "Schritt 3: Reset und neue Sitzung"
                 },
                 "frames": []
             },
             {
                 "description": {
-                    "es": "Paso 4: Fingerprint y fecha",
-                    "en": "Step 4: Fingerprint and date",
-                    "fr": "Étape 4 : Empreinte et date",
-                    "de": "Schritt 4: Fingerprint und Datum"
+                    "es": "Paso 4: Fingerprint y fecha de coding",
+                    "en": "Step 4: Fingerprint and coding date",
+                    "fr": "Étape 4 : Empreinte et date de codage",
+                    "de": "Schritt 4: Fingerprint und Codierdatum"
                 },
                 "frames": []
             },
             {
                 "description": {
-                    "es": "Paso 5: Verificación",
-                    "en": "Step 5: Verification",
-                    "fr": "Étape 5 : Vérification",
-                    "de": "Schritt 5: Prüfung"
+                    "es": "Paso 5: Verificación final",
+                    "en": "Step 5: Final verification",
+                    "fr": "Étape 5 : Vérification finale",
+                    "de": "Schritt 5: Abschlussprüfung"
                 },
                 "frames": []
             }
@@ -130,28 +130,28 @@
             },
             {
                 "description": {
-                    "es": "Paso 2: Lectura de parámetros",
-                    "en": "Step 2: Read parameters",
-                    "fr": "Étape 2 : Lecture des paramètres",
-                    "de": "Schritt 2: Parameter lesen"
+                    "es": "Paso 2: Lectura de estado e inicio de rutina",
+                    "en": "Step 2: State read and start routine",
+                    "fr": "Étape 2 : Lecture d'état et démarrage de routine",
+                    "de": "Schritt 2: Status lesen und Routine starten"
                 },
                 "frames": []
             },
             {
                 "description": {
-                    "es": "Paso 3: Llevar a topes y centrar",
-                    "en": "Step 3: Move to endstops and center",
-                    "fr": "Étape 3 : Aller aux butées et centrer",
-                    "de": "Schritt 3: Endanschläge und zentrieren"
+                    "es": "Paso 3: Llevar el volante a tope izquierda, mantener 3 s; luego a tope derecha, mantener 3 s; y centrar el volante.",
+                    "en": "Step 3: Turn to full left lock, hold 3 s; then full right lock, hold 3 s; and center the steering.",
+                    "fr": "Étape 3 : Tourner en butée gauche, maintenir 3 s ; puis en butée droite, maintenir 3 s ; et centrer le volant.",
+                    "de": "Schritt 3: Lenkrad ganz links, 3 s halten; dann ganz rechts, 3 s halten; und das Lenkrad zentrieren."
                 },
                 "frames": []
             },
             {
                 "description": {
-                    "es": "Paso 4: (pendiente)",
-                    "en": "Step 4: (pending)",
-                    "fr": "Étape 4 : (en attente)",
-                    "de": "Schritt 4: (ausstehend)"
+                    "es": "Paso 4: Cierre y borrado DTC",
+                    "en": "Step 4: Closeout and clear DTC",
+                    "fr": "Étape 4 : Clôture et effacement DTC",
+                    "de": "Schritt 4: Abschluss und DTC löschen"
                 },
                 "frames": []
             }
