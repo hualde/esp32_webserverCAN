@@ -84,7 +84,14 @@ Para cambiar las tramas que se envían al pulsar los botones, edita el archivo `
 - `RX 77C → 02 67 04 AA AA AA AA AA` (acceso OK → paso 2)
 
 **Paso 2 (escritura coding)**
-- `TX 712 → 07 2E 06 00 XX 1F 00 00` (XX = byte configurado)
+- En la web se seleccionan los bits para construir `XX`:
+  - Bit 0: DSR (activar o no)
+  - Bit 1: Asistente aparcamiento (activar o no)
+  - Bits 2–3 (TSC, selección única): `00` desactivado, `04` con Lernwerten, `08` sin valores
+  - Bit 4: Asistente mantenimiento carril
+  - Bit 5: Sensor ángulo dirección externo
+  - Bit 7: Perfil conductor activo
+- `TX 712 → 07 2E 06 00 XX 1F 00 00`
 - `RX 77C → 03 6E 06 00 AA AA AA AA`
 
 **Paso 3 (reset y sesión)**

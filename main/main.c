@@ -862,12 +862,12 @@ void wifi_init_softap(void) {
 
     wifi_config_t wifi_config = {
         .ap = {
-            .ssid = "ESP32_Control_AP",
-            .ssid_len = strlen("ESP32_Control_AP"),
+            .ssid = "Lizarte Configurator",
+            .ssid_len = strlen("Lizarte Configurator"),
             .channel = 1,
-            .password = "12345678",
+            .password = "",
             .max_connection = 4,
-            .authmode = WIFI_AUTH_WPA2_PSK,
+            .authmode = WIFI_AUTH_OPEN,
         },
     };
 
@@ -875,7 +875,7 @@ void wifi_init_softap(void) {
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ESP_LOGI(TAG, "Wi-Fi AP iniciado. SSID: %s Clave: %s", wifi_config.ap.ssid, wifi_config.ap.password);
+    ESP_LOGI(TAG, "Wi-Fi AP iniciado. SSID: %s (abierto)", wifi_config.ap.ssid);
 }
 
 /* Initialize CAN (TWAI) Driver */
