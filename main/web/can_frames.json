@@ -43,19 +43,12 @@
             },
             {
                 "description": {
-                    "es": "Paso 2: Escritura de coding (byte XX)",
-                    "en": "Step 2: Write coding (byte XX)",
-                    "fr": "Étape 2 : Écriture du codage (octet XX)",
-                    "de": "Schritt 2: Codierung schreiben (Byte XX)"
+                    "es": "Paso 2: Escritura fingerprint, fecha y coding (byte XX)",
+                    "en": "Step 2: Write fingerprint, date and coding (byte XX)",
+                    "fr": "Étape 2 : Empreinte, date et codage (octet XX)",
+                    "de": "Schritt 2: Fingerprint, Datum und Codierung (Byte XX)"
                 },
-                "frames": [
-                    {
-                        "id": "712",
-                        "data": ["0x07", "0x2E", "0x06", "0x00", "0x00", "0x1F", "0x00", "0x00"],
-                        "dlc": 8,
-                        "delay_ms": 50
-                    }
-                ]
+                "frames": []
             },
             {
                 "description": {
@@ -68,10 +61,10 @@
             },
             {
                 "description": {
-                    "es": "Paso 4: Fingerprint y fecha de coding",
-                    "en": "Step 4: Fingerprint and coding date",
-                    "fr": "Étape 4 : Empreinte et date de codage",
-                    "de": "Schritt 4: Fingerprint und Codierdatum"
+                    "es": "Paso 4: Reescritura fingerprint y fecha post-reset",
+                    "en": "Step 4: Rewrite fingerprint and date after reset",
+                    "fr": "Étape 4 : Réécriture empreinte et date après reset",
+                    "de": "Schritt 4: Fingerprint und Datum nach Reset erneut schreiben"
                 },
                 "frames": []
             },

@@ -12,7 +12,13 @@ RX 77C → 06 67 03 B1 B2 B3 B4 AA       (seed)
 TX 712 → 06 27 04 K1 K2 K3 K4 FF       (K3K4 = B3B4 + 0x4B31)
 RX 77C → 02 67 04 AA AA AA AA AA       (acceso OK → paso 2)
 
-Paso 2 (escritura coding)
+Paso 2 (escritura fingerprint, fecha y coding)
+TX 712 → 06 2E F1 99 26 03 06 FF
+RX 77C → 03 6E F1 99 AA AA AA AA
+TX 712 → 10 09 2E F1 98 0A 2C 2F
+RX 77C → 30 0F 03 AA AA AA AA AA
+TX 712 → 21 CF 86 9F FF FF FF FF
+RX 77C → 03 6E F1 98 AA AA AA AA
 TX 712 → 07 2E 06 00 XX 1F 00 00       (XX = byte configurado)
 RX 77C → 03 6E 06 00 AA AA AA AA
 
@@ -25,7 +31,7 @@ RX 77C → 02 7E 00 AA AA AA AA AA
 TX 712 → 02 10 03 FF FF FF FF FF
 RX 77C → 06 50 03 00 32 01 F4 AA
 
-Paso 4 (escritura fingerprint y fecha)
+Paso 4 (reescritura fingerprint y fecha post-reset)
 TX 712 → 10 09 2E F1 98 0A 2C 2F
 RX 77C → 30 0F 03 AA AA AA AA AA
 TX 712 → 21 CF 86 9F FF FF FF FF
@@ -35,7 +41,7 @@ RX 77C → 03 6E F1 99 AA AA AA AA
 
 Paso 5 (verificación)
 TX 712 → 03 22 06 00 FF FF FF FF
-RX 77C → 07 62 06 00 XX 1F 00 00       (XX debe coincidir con paso 2)
+RX 77C → 07 62 06 00 XX 1F 00 00
 
 
 ==============================

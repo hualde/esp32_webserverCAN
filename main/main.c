@@ -231,8 +231,9 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                 }
 
                 bool seed_request_tx_ok = false;
+                /* Paso 2 acción 1: la trama 07 2E 06 00 XX 1F 00 00 se envía más abajo con el byte XX del query */
                 bool skip_auto_send =
-                    (strcmp(action_key, "action1") == 0 && (step_idx == 2 || step_idx == 3 || step_idx == 4)) ||
+                    (strcmp(action_key, "action1") == 0 && (step_idx == 1 || step_idx == 2 || step_idx == 3 || step_idx == 4)) ||
                     (strcmp(action_key, "action2") == 0 && (step_idx == 1 || step_idx == 3));
 
                 if (!skip_auto_send) {
@@ -297,21 +298,61 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                 }
 
                 if (strcmp(action_key, "action1") == 0 && step_idx == 1) {
-                    ESP_LOGI(TAG, "[action1] Paso 2: esperando 6E 06 00");
+                    /* Paso 2: escritura fingerprint (F1 99), fecha (F1 98), y coding (07 2E 06 00 XX) */
                     drain_rx_queue();
                     last_rx_valid = false;
                     twai_message_t rx_msg;
+
+                    /* 1) F1 99: fingerprint */
+                    const uint8_t f199_req[8] = {0x06, 0x2E, 0xF1, 0x99, 0x26, 0x03, 0x06, 0xFF};
+                    send_can_frame(SEED_REQUEST_ID, f199_req);
                     for (;;) {
                         if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
                         if (rx_msg.identifier == SEED_RESPONSE_ID &&
                             rx_msg.data_length_code >= 4 &&
-                            rx_msg.data[0] == 0x03 &&
-                            rx_msg.data[1] == 0x6E &&
-                            rx_msg.data[2] == 0x06 &&
-                            rx_msg.data[3] == 0x00) {
-                            step_action1_ok = true;
+                            rx_msg.data[0] == 0x03 && rx_msg.data[1] == 0x6E &&
+                            rx_msg.data[2] == 0xF1 && rx_msg.data[3] == 0x99)
                             break;
+                    }
+
+                    /* 2) F1 98: fecha (multiframe) */
+                    const uint8_t f198_ff[8] = {0x10, 0x09, 0x2E, 0xF1, 0x98, 0x0A, 0x2C, 0x2F};
+                    send_can_frame(SEED_REQUEST_ID, f198_ff);
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code >= 3 &&
+                            rx_msg.data[0] == 0x30 && rx_msg.data[1] == 0x0F && rx_msg.data[2] == 0x03)
+                            break;
+                    }
+                    const uint8_t f198_cf[8] = {0x21, 0xCF, 0x86, 0x9F, 0xFF, 0xFF, 0xFF, 0xFF};
+                    send_can_frame(SEED_REQUEST_ID, f198_cf);
+                    for (;;) {
+                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data_length_code >= 4 &&
+                            rx_msg.data[0] == 0x03 && rx_msg.data[1] == 0x6E &&
+                            rx_msg.data[2] == 0xF1 && rx_msg.data[3] == 0x98)
+                            break;
+                    }
+
+                    /* 3) Coding byte XX (solo si está definido) */
+                    if (pending_xx_valid) {
+                        const uint8_t write_coding[8] = {0x07, 0x2E, 0x06, 0x00, pending_xx, 0x1F, 0x00, 0x00};
+                        send_can_frame(SEED_REQUEST_ID, write_coding);
+                        ESP_LOGI(TAG, "[action1] Paso 2: TX 712 → 07 2E 06 00 %02X 1F 00 00", pending_xx);
+                        for (;;) {
+                            if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                            if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                                rx_msg.data_length_code >= 4 &&
+                                rx_msg.data[0] == 0x03 && rx_msg.data[1] == 0x6E &&
+                                rx_msg.data[2] == 0x06 && rx_msg.data[3] == 0x00) {
+                                step_action1_ok = true;
+                                break;
+                            }
                         }
+                    } else {
+                        ESP_LOGW(TAG, "[action1] Paso 2: byte XX no definido, no se envia 07 2E 06 00");
                     }
                 }
 
@@ -354,7 +395,7 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                 }
 
                 if (strcmp(action_key, "action1") == 0 && step_idx == 3) {
-                    ESP_LOGI(TAG, "[action1] Paso 4: fingerprint y fecha");
+                    ESP_LOGI(TAG, "[action1] Paso 4: reescritura fingerprint y fecha post-reset");
                     drain_rx_queue();
                     last_rx_valid = false;
                     const uint8_t f198_ff[8] = {0x10,0x09,0x2E,0xF1,0x98,0x0A,0x2C,0x2F};
