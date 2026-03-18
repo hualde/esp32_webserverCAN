@@ -32,6 +32,26 @@ const translations = {
 let canData = null;
 let currentActionKey = null;
 let currentStepIdx = 0;
+let xxTouched = false;
+
+function getStepOrderForAction(actionKey) {
+    // Acción 1: el paso 2 se ejecuta automáticamente dentro del paso 1 del firmware
+    // Por UX, ocultamos el "Paso 2" y mostramos solo 4 pantallas: [0,2,3,4]
+    if (actionKey === 'action1') return [0, 2, 3, 4];
+    return null; // orden natural
+}
+
+function getActualStepIdx() {
+    const order = getStepOrderForAction(currentActionKey);
+    if (!order) return currentStepIdx;
+    return order[currentStepIdx] ?? 0;
+}
+
+function getTotalUiSteps() {
+    const order = getStepOrderForAction(currentActionKey);
+    if (!order) return (canData?.[currentActionKey]?.steps?.length ?? 0);
+    return order.length;
+}
 
 // Fetch CAN frames/steps on start
 async function loadCanData() {
@@ -93,9 +113,10 @@ function updateStepUI() {
 
     document.getElementById('step-action-title').innerText = action.title[lang];
     document.getElementById('current-step-num').innerText = currentStepIdx + 1;
-    document.getElementById('total-steps-num').innerText = steps.length;
+    document.getElementById('total-steps-num').innerText = getTotalUiSteps();
 
-    const step = steps[currentStepIdx];
+    const actualIdx = getActualStepIdx();
+    const step = steps[actualIdx];
     document.getElementById('step-description').innerText = step.description[lang];
 
     const debugCard = document.getElementById('key-debug');
@@ -109,7 +130,8 @@ function updateStepUI() {
 
     const selectorCard = document.getElementById('step2-selector');
     if (selectorCard) {
-        if (currentActionKey === 'action1' && currentStepIdx === 1) {
+        // El byte XX debe estar listo antes del paso 1; lo mostramos también en el paso 1.
+        if (currentActionKey === 'action1' && currentStepIdx === 0) {
             selectorCard.classList.remove('hidden');
             updateCodingByte();
         } else {
@@ -118,7 +140,8 @@ function updateStepUI() {
     }
 
     // Progress
-    const progress = (currentStepIdx / steps.length) * 100;
+    const totalUi = Math.max(1, getTotalUiSteps());
+    const progress = (currentStepIdx / totalUi) * 100;
     document.getElementById('progress-inner').style.width = `${progress}%`;
 
     // Reset button to default behavior
@@ -126,7 +149,7 @@ function updateStepUI() {
     btn.onclick = executeStep;
     btn.disabled = false;
 
-    if (currentStepIdx === steps.length - 1) {
+    if (currentStepIdx === getTotalUiSteps() - 1) {
         btn.innerText = t.finish;
     } else {
         btn.innerText = t.next;
@@ -186,11 +209,13 @@ async function executeStep() {
     const action = canData[currentActionKey];
     const lang = document.getElementById('language-select').value;
 
-    let url = `/api/execute_step?action=${currentActionKey}&step=${currentStepIdx}`;
-    if (currentActionKey === 'action1' && currentStepIdx === 1) {
+    const actualStepIdx = getActualStepIdx();
+    let url = `/api/execute_step?action=${currentActionKey}&step=${actualStepIdx}`;
+    // En Acción 1 el XX debe enviarse ya en el Paso 1 (para que el firmware ejecute Paso 2 inmediatamente).
+    if (currentActionKey === 'action1' && actualStepIdx === 0) {
         const selectedValue = updateCodingByte();
-        if (!selectedValue) {
-            alert("Selecciona una opción");
+        if (!xxTouched || !selectedValue) {
+            alert("Configura el byte XX y luego ejecuta el Paso 1.");
             btn.disabled = false;
             return;
         }
@@ -214,15 +239,16 @@ async function executeStep() {
 
             if ((currentActionKey === 'action1' || currentActionKey === 'action2') && currentStepIdx === 0) {
                 if (data && data.access_ok) {
+                    // Para Acción 1 ocultamos el paso 2 (automático) y saltamos a Reset
                     currentStepIdx = 1;
                     setTimeout(() => updateStepUI(), 300);
                 } else {
                     btn.disabled = false;
                 }
-            } else if ((currentActionKey === 'action1' && (currentStepIdx >= 1 && currentStepIdx <= 4)) ||
+            } else if ((currentActionKey === 'action1' && (currentStepIdx >= 1 && currentStepIdx <= 3)) ||
                        (currentActionKey === 'action2' && (currentStepIdx === 1 || currentStepIdx === 2 || currentStepIdx === 3))) {
                 if (data && data.step_ok) {
-                    if (currentStepIdx < action.steps.length - 1) {
+                    if (currentStepIdx < getTotalUiSteps() - 1) {
                         currentStepIdx++;
                         setTimeout(() => updateStepUI(), 300);
                     } else {
@@ -235,7 +261,7 @@ async function executeStep() {
                 } else {
                     btn.disabled = false;
                 }
-            } else if (currentStepIdx < action.steps.length - 1) {
+            } else if (currentStepIdx < getTotalUiSteps() - 1) {
                 currentStepIdx++;
                 setTimeout(() => updateStepUI(), 300);
             } else {
@@ -266,10 +292,10 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     inputs.forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.addEventListener('change', updateCodingByte);
+        if (el) el.addEventListener('change', () => { xxTouched = true; updateCodingByte(); });
     });
     document.querySelectorAll('input[name="tsc"]').forEach(el => {
-        el.addEventListener('change', updateCodingByte);
+        el.addEventListener('change', () => { xxTouched = true; updateCodingByte(); });
     });
 
     // Default 0x85: DSR + TSC Lernwerten + perfil conductor
@@ -280,4 +306,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (bit7) bit7.checked = true;
     if (tscLern) tscLern.checked = true;
     updateCodingByte();
+    // Con valores por defecto ya hay un XX definido
+    xxTouched = true;
 });

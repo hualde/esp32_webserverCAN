@@ -169,6 +169,98 @@ static bool send_seed_request_frame(void) {
     return false;
 }
 
+static bool uds_wait_with_pending(uint8_t req_sid,
+                                  bool (*match_positive)(const twai_message_t *msg, void *ctx),
+                                  void *ctx,
+                                  int timeout_ms,
+                                  int pending_timeout_ms) {
+    const int64_t start_us = esp_timer_get_time();
+    int64_t deadline_us = start_us + (int64_t)timeout_ms * 1000;
+    const int64_t pending_deadline_us = start_us + (int64_t)pending_timeout_ms * 1000;
+    twai_message_t rx_msg;
+
+    for (;;) {
+        int64_t now_us = esp_timer_get_time();
+        if (now_us >= deadline_us) return false;
+
+        if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) {
+            continue;
+        }
+        if (rx_msg.identifier != SEED_RESPONSE_ID || rx_msg.data_length_code < 3) {
+            continue;
+        }
+
+        // Negative response: 7F <req_sid> <nrc>
+        if (rx_msg.data_length_code >= 4 &&
+            rx_msg.data[0] == 0x03 && rx_msg.data[1] == 0x7F && rx_msg.data[2] == req_sid) {
+            uint8_t nrc = rx_msg.data[3];
+            if (nrc == 0x78) {
+                if (now_us >= pending_deadline_us) return false;
+                continue;
+            }
+            return false;
+        }
+
+        if (match_positive && match_positive(&rx_msg, ctx)) return true;
+    }
+}
+
+static bool match_7e_tester_present(const twai_message_t *m, void *ctx) {
+    (void)ctx;
+    return (m->data_length_code >= 3 &&
+            m->data[0] == 0x02 && m->data[1] == 0x7E && m->data[2] == 0x00);
+}
+
+static bool match_50_1003(const twai_message_t *m, void *ctx) {
+    (void)ctx;
+    return (m->data_length_code >= 3 &&
+            m->data[0] == 0x06 && m->data[1] == 0x50 && m->data[2] == 0x03);
+}
+
+typedef struct {
+    uint32_t seed;
+    bool got_seed;
+} seed_ctx_t;
+
+static bool match_67_seed(const twai_message_t *m, void *ctx) {
+    seed_ctx_t *s = (seed_ctx_t *)ctx;
+    if (!(m->data_length_code >= 7 && m->data[1] == 0x67 && m->data[2] == 0x03)) return false;
+    s->seed = ((uint32_t)m->data[3] << 24) | ((uint32_t)m->data[4] << 16) | ((uint32_t)m->data[5] << 8) | (uint32_t)m->data[6];
+    s->got_seed = true;
+    return true;
+}
+
+static bool match_67_access_ok(const twai_message_t *m, void *ctx) {
+    (void)ctx;
+    return (m->data_length_code == 8 &&
+            m->data[0] == 0x02 && m->data[1] == 0x67 && m->data[2] == 0x04 &&
+            m->data[3] == 0xAA && m->data[4] == 0xAA && m->data[5] == 0xAA && m->data[6] == 0xAA && m->data[7] == 0xAA);
+}
+
+static bool match_6e_f199(const twai_message_t *m, void *ctx) {
+    (void)ctx;
+    return (m->data_length_code >= 4 &&
+            m->data[0] == 0x03 && m->data[1] == 0x6E && m->data[2] == 0xF1 && m->data[3] == 0x99);
+}
+
+static bool match_30_flow(const twai_message_t *m, void *ctx) {
+    (void)ctx;
+    return (m->data_length_code >= 3 &&
+            m->data[0] == 0x30 && m->data[1] == 0x0F && m->data[2] == 0x03);
+}
+
+static bool match_6e_f198(const twai_message_t *m, void *ctx) {
+    (void)ctx;
+    return (m->data_length_code >= 4 &&
+            m->data[0] == 0x03 && m->data[1] == 0x6E && m->data[2] == 0xF1 && m->data[3] == 0x98);
+}
+
+static bool match_6e_0600(const twai_message_t *m, void *ctx) {
+    (void)ctx;
+    return (m->data_length_code >= 4 &&
+            m->data[0] == 0x03 && m->data[1] == 0x6E && m->data[2] == 0x06 && m->data[3] == 0x00);
+}
+
 static bool parse_query_byte(const char *str, uint8_t *out) {
     if (!str || !out) return false;
     char *endptr = NULL;
@@ -233,7 +325,7 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                 bool seed_request_tx_ok = false;
                 /* Paso 2 acción 1: la trama 07 2E 06 00 XX 1F 00 00 se envía más abajo con el byte XX del query */
                 bool skip_auto_send =
-                    (strcmp(action_key, "action1") == 0 && (step_idx == 1 || step_idx == 2 || step_idx == 3 || step_idx == 4)) ||
+                    (strcmp(action_key, "action1") == 0 && (step_idx == 0 || step_idx == 1 || step_idx == 2 || step_idx == 3 || step_idx == 4)) ||
                     (strcmp(action_key, "action2") == 0 && (step_idx == 1 || step_idx == 3));
 
                 if (!skip_auto_send) {
@@ -281,80 +373,71 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
 
                 if ((strcmp(action_key, "action1") == 0 || strcmp(action_key, "action2") == 0) &&
                     step_idx == 0) {
-                    ESP_LOGI(TAG, "[%s] Paso 1: esperando acceso (67 04)", action_key);
-                    if (!seed_request_tx_ok) {
-                        seed_request_tx_ok = send_seed_request_frame();
-                    }
-
-                    if (seed_request_tx_ok) {
-                        if (strcmp(action_key, "action1") == 0) {
-                            drain_rx_queue();
-                        }
-                        last_rx_valid = false;
-                        if (wait_for_access_ok()) {
-                            access_ok = true;
-                        }
-                    }
-                }
-
-                if (strcmp(action_key, "action1") == 0 && step_idx == 1) {
-                    /* Paso 2: escritura fingerprint (F1 99), fecha (F1 98), y coding (07 2E 06 00 XX) */
+                    // Acción 1/2 paso 1: SecurityAccess. Reglas críticas:
+                    // - NO enviar 04 14 aquí
+                    // - TX -> esperar RX antes del siguiente TX
                     drain_rx_queue();
                     last_rx_valid = false;
-                    twai_message_t rx_msg;
 
-                    /* 1) F1 99: fingerprint */
-                    const uint8_t f199_req[8] = {0x06, 0x2E, 0xF1, 0x99, 0x26, 0x03, 0x06, 0xFF};
-                    send_can_frame(SEED_REQUEST_ID, f199_req);
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code >= 4 &&
-                            rx_msg.data[0] == 0x03 && rx_msg.data[1] == 0x6E &&
-                            rx_msg.data[2] == 0xF1 && rx_msg.data[3] == 0x99)
-                            break;
-                    }
+                    const uint8_t tester_present[8] = {0x02,0x3E,0x00,0xFF,0xFF,0xFF,0xFF,0xFF};
+                    const uint8_t diag_session[8]   = {0x02,0x10,0x03,0xFF,0xFF,0xFF,0xFF,0xFF};
+                    const uint8_t seed_req[8]       = {0x02,0x27,0x03,0xFF,0xFF,0xFF,0xFF,0xFF};
 
-                    /* 2) F1 98: fecha (multiframe) */
-                    const uint8_t f198_ff[8] = {0x10, 0x09, 0x2E, 0xF1, 0x98, 0x0A, 0x2C, 0x2F};
-                    send_can_frame(SEED_REQUEST_ID, f198_ff);
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code >= 3 &&
-                            rx_msg.data[0] == 0x30 && rx_msg.data[1] == 0x0F && rx_msg.data[2] == 0x03)
-                            break;
-                    }
-                    const uint8_t f198_cf[8] = {0x21, 0xCF, 0x86, 0x9F, 0xFF, 0xFF, 0xFF, 0xFF};
-                    send_can_frame(SEED_REQUEST_ID, f198_cf);
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code >= 4 &&
-                            rx_msg.data[0] == 0x03 && rx_msg.data[1] == 0x6E &&
-                            rx_msg.data[2] == 0xF1 && rx_msg.data[3] == 0x98)
-                            break;
-                    }
+                    if (!send_can_frame(SEED_REQUEST_ID, tester_present)) goto step0_done;
+                    if (!uds_wait_with_pending(0x3E, match_7e_tester_present, NULL, 2000, 5000)) goto step0_done;
 
-                    /* 3) Coding byte XX (solo si está definido) */
-                    if (pending_xx_valid) {
+                    if (!send_can_frame(SEED_REQUEST_ID, diag_session)) goto step0_done;
+                    if (!uds_wait_with_pending(0x10, match_50_1003, NULL, 2000, 5000)) goto step0_done;
+
+                    if (!send_can_frame(SEED_REQUEST_ID, seed_req)) goto step0_done;
+                    seed_ctx_t sctx = {.seed = 0, .got_seed = false};
+                    if (!uds_wait_with_pending(0x27, match_67_seed, &sctx, 2000, 5000) || !sctx.got_seed) goto step0_done;
+
+                    uint32_t key = sctx.seed + SEED_ADDEND;
+                    twai_message_t key_msg;
+                    memset(&key_msg, 0, sizeof(key_msg));
+                    key_msg.identifier = SEED_REQUEST_ID;
+                    key_msg.extd = 0;
+                    key_msg.rtr = 0;
+                    key_msg.data_length_code = 8;
+                    key_msg.data[0] = 0x06;
+                    key_msg.data[1] = 0x27;
+                    key_msg.data[2] = 0x04;
+                    key_msg.data[3] = (uint8_t)((key >> 24) & 0xFF);
+                    key_msg.data[4] = (uint8_t)((key >> 16) & 0xFF);
+                    key_msg.data[5] = (uint8_t)((key >> 8) & 0xFF);
+                    key_msg.data[6] = (uint8_t)(key & 0xFF);
+                    key_msg.data[7] = 0xFF;
+                    if (twai_transmit(&key_msg, pdMS_TO_TICKS(100)) != ESP_OK) goto step0_done;
+                    if (!uds_wait_with_pending(0x27, match_67_access_ok, NULL, 2000, 5000)) goto step0_done;
+
+                    // Acción 1: ejecutar Paso 2 inmediatamente tras 67 04 (sin intervención humana)
+                    if (strcmp(action_key, "action1") == 0) {
+                        if (!pending_xx_valid) goto step0_done;
+
+                        const uint8_t f199_req[8] = {0x06, 0x2E, 0xF1, 0x99, 0x26, 0x03, 0x06, 0xFF};
+                        if (!send_can_frame(SEED_REQUEST_ID, f199_req)) goto step0_done;
+                        if (!uds_wait_with_pending(0x2E, match_6e_f199, NULL, 2000, 5000)) goto step0_done;
+
+                        const uint8_t f198_ff[8] = {0x10, 0x09, 0x2E, 0xF1, 0x98, 0x0A, 0x2C, 0x2F};
+                        if (!send_can_frame(SEED_REQUEST_ID, f198_ff)) goto step0_done;
+                        if (!uds_wait_with_pending(0x2E, match_30_flow, NULL, 2000, 5000)) goto step0_done;
+
+                        const uint8_t f198_cf[8] = {0x21, 0xCF, 0x86, 0x9F, 0xFF, 0xFF, 0xFF, 0xFF};
+                        if (!send_can_frame(SEED_REQUEST_ID, f198_cf)) goto step0_done;
+                        if (!uds_wait_with_pending(0x2E, match_6e_f198, NULL, 2000, 5000)) goto step0_done;
+
                         const uint8_t write_coding[8] = {0x07, 0x2E, 0x06, 0x00, pending_xx, 0x1F, 0x00, 0x00};
-                        send_can_frame(SEED_REQUEST_ID, write_coding);
-                        ESP_LOGI(TAG, "[action1] Paso 2: TX 712 → 07 2E 06 00 %02X 1F 00 00", pending_xx);
-                        for (;;) {
-                            if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
-                            if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                                rx_msg.data_length_code >= 4 &&
-                                rx_msg.data[0] == 0x03 && rx_msg.data[1] == 0x6E &&
-                                rx_msg.data[2] == 0x06 && rx_msg.data[3] == 0x00) {
-                                step_action1_ok = true;
-                                break;
-                            }
-                        }
-                    } else {
-                        ESP_LOGW(TAG, "[action1] Paso 2: byte XX no definido, no se envia 07 2E 06 00");
+                        if (!send_can_frame(SEED_REQUEST_ID, write_coding)) goto step0_done;
+                        if (!uds_wait_with_pending(0x2E, match_6e_0600, NULL, 2000, 5000)) goto step0_done;
                     }
+
+                    access_ok = true;
+step0_done:
+                    ;
                 }
+
+                // Paso 2 de Acción 1 ahora se ejecuta AUTOMÁTICO dentro del Paso 1 (step_idx==0).
 
                 if (strcmp(action_key, "action1") == 0 && step_idx == 2) {
                     ESP_LOGI(TAG, "[action1] Paso 3: reset y sesion");

@@ -9,7 +9,7 @@
         "steps": [
             {
                 "description": {
-                    "es": "Paso 1: Sesión y desbloqueo de seguridad",
+                    "es": "Paso 1: Seguridad UDS + ejecución automática del Paso 2",
                     "en": "Step 1: Session and security unlock",
                     "fr": "Étape 1 : Session et déverrouillage sécurité",
                     "de": "Schritt 1: Sitzung und Sicherheitsfreigabe"
@@ -29,12 +29,6 @@
                     },
                     {
                         "id": "712",
-                        "data": ["0x04", "0x14", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF"],
-                        "dlc": 8,
-                        "delay_ms": 100
-                    },
-                    {
-                        "id": "712",
                         "data": ["0x02", "0x27", "0x03", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF"],
                         "dlc": 8,
                         "delay_ms": 50
@@ -43,7 +37,7 @@
             },
             {
                 "description": {
-                    "es": "Paso 2: Escritura fingerprint, fecha y coding (byte XX)",
+                    "es": "Paso 2 (automático): Escritura fingerprint, fecha y coding (byte XX)",
                     "en": "Step 2: Write fingerprint, date and coding (byte XX)",
                     "fr": "Étape 2 : Empreinte, date et codage (octet XX)",
                     "de": "Schritt 2: Fingerprint, Datum und Codierung (Byte XX)"
@@ -106,12 +100,6 @@
                         "data": ["0x02", "0x10", "0x03", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF"],
                         "dlc": 8,
                         "delay_ms": 50
-                    },
-                    {
-                        "id": "712",
-                        "data": ["0x04", "0x14", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF"],
-                        "dlc": 8,
-                        "delay_ms": 100
                     },
                     {
                         "id": "712",
