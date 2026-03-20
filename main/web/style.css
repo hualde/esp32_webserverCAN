@@ -27,7 +27,15 @@ body {
 }
 
 .glass-container {
-    background: var(--glass-bg);
+    position: relative;
+    background: linear-gradient(
+        180deg,
+        #ffffff 0%,
+        #ffffff 22%,
+        rgba(255, 252, 253, 0.97) 40%,
+        rgba(252, 228, 236, 0.88) 68%,
+        rgba(248, 187, 208, 0.65) 100%
+    );
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
@@ -39,6 +47,25 @@ body {
     text-align: center;
 }
 
+#app-card {
+    padding-top: 48px;
+}
+
+.lang-selector--corner {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 2;
+    margin: 0;
+}
+
+@media (min-width: 380px) {
+    .lang-selector--corner {
+        top: 20px;
+        right: 20px;
+    }
+}
+
 header {
     display: flex;
     flex-direction: column;
@@ -47,14 +74,46 @@ header {
     margin-bottom: 30px;
 }
 
+.app-logo {
+    display: block;
+    width: 104px;
+    height: auto;
+    flex-shrink: 0;
+    user-select: none;
+    pointer-events: none;
+}
+
+.app-logo--small {
+    width: 76px;
+}
+
 h1 {
-    font-weight: 700;
     font-size: 1.8rem;
     letter-spacing: -0.8px;
+}
+
+.app-title {
+    font-weight: 400;
+    line-height: 1.2;
+    background: none;
+    -webkit-text-fill-color: inherit;
+}
+
+.app-title__brand,
+.app-title__suffix {
     background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
     -webkit-background-clip: text;
     background-clip: text;
+    color: transparent;
     -webkit-text-fill-color: transparent;
+}
+
+.app-title__brand {
+    font-weight: 700;
+}
+
+.app-title__suffix {
+    font-weight: 400;
 }
 
 .lang-selector select {
@@ -145,7 +204,34 @@ footer {
 #step-screen header {
     flex-direction: row;
     justify-content: space-between;
+    align-items: flex-start;
     width: 100%;
+    gap: 4px;
+}
+
+.step-header-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    gap: 6px;
+    text-align: center;
+}
+
+.step-header-center .app-logo--small {
+    margin-top: 2px;
+}
+
+#step-screen header #step-action-title {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.25;
+}
+
+.step-header-spacer {
+    width: 46px;
+    flex-shrink: 0;
 }
 
 .back-btn {

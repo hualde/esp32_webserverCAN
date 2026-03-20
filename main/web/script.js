@@ -1,14 +1,16 @@
 const translations = {
     es: {
-        title: "Lizarte On! Configurator",
+        titleBrand: "Lizarte On",
+        titleSuffix: "! Configurator",
         status: "Dispositivo conectado y listo.",
         next: "Ejecutar Paso",
         finish: "Finalizar",
         completed: "¡Acción completada!",
         alertNeedByte: "Configura el byte XX y luego ejecuta el Paso 1.",
         errorGeneric: "Error",
+        backStep: "Volver a la pantalla principal",
         coding: {
-            codingTitle: "Configuración del byte XX",
+            codingTitle: "Configuración",
             help: "Ayuda",
             debugRx: "Respuesta RX:",
             dsrSub: "DSR — Recomendación de dirección",
@@ -36,15 +38,17 @@ const translations = {
         }
     },
     en: {
-        title: "Lizarte On! Configurator",
+        titleBrand: "Lizarte On",
+        titleSuffix: "! Configurator",
         status: "Device connected and ready.",
         next: "Execute step",
         finish: "Finish",
         completed: "Action completed!",
         alertNeedByte: "Configure byte XX and then run step 1.",
         errorGeneric: "Error",
+        backStep: "Back to main screen",
         coding: {
-            codingTitle: "Byte XX configuration",
+            codingTitle: "Configuration",
             help: "Help",
             debugRx: "RX response:",
             dsrSub: "DSR — Steering recommendation",
@@ -72,15 +76,17 @@ const translations = {
         }
     },
     fr: {
-        title: "Lizarte On! Configurator",
+        titleBrand: "Lizarte On",
+        titleSuffix: "! Configurator",
         status: "Appareil connecté et prêt.",
         next: "Exécuter l'étape",
         finish: "Terminer",
         completed: "Action terminée !",
         alertNeedByte: "Configurez l'octet XX puis exécutez l'étape 1.",
         errorGeneric: "Erreur",
+        backStep: "Retour à l'écran principal",
         coding: {
-            codingTitle: "Configuration de l'octet XX",
+            codingTitle: "Configuration",
             help: "Aide",
             debugRx: "Réponse RX :",
             dsrSub: "DSR — Recommandation de direction",
@@ -108,15 +114,17 @@ const translations = {
         }
     },
     de: {
-        title: "Lizarte On! Configurator",
+        titleBrand: "Lizarte On",
+        titleSuffix: "! Configurator",
         status: "Gerät verbunden und bereit.",
         next: "Schritt ausführen",
         finish: "Abschließen",
         completed: "Aktion abgeschlossen!",
         alertNeedByte: "Byte XX konfigurieren und dann Schritt 1 ausführen.",
         errorGeneric: "Fehler",
+        backStep: "Zurück zum Hauptbildschirm",
         coding: {
-            codingTitle: "Byte-XX-Konfiguration",
+            codingTitle: "Konfiguration",
             help: "Hilfe",
             debugRx: "RX-Antwort:",
             dsrSub: "DSR — Lenkempfehlung",
@@ -249,8 +257,13 @@ function changeLanguage() {
     document.documentElement.lang = lang;
 
     // Main screen texts
-    document.getElementById('title').innerText = t.title;
+    const brandEl = document.getElementById('title-brand');
+    const suffixEl = document.getElementById('title-suffix');
+    if (brandEl) brandEl.textContent = t.titleBrand;
+    if (suffixEl) suffixEl.textContent = t.titleSuffix;
     document.getElementById('status-text').innerText = t.status;
+    const stepBack = document.getElementById('step-back-btn');
+    if (stepBack) stepBack.setAttribute('aria-label', t.backStep);
     applyCodingUiLang(lang);
     applyEndstopHelpLang(lang);
 
