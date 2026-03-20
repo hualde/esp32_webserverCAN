@@ -28,6 +28,8 @@ extern const uint8_t can_frames_json_start[] asm("_binary_can_frames_json_start"
 extern const uint8_t can_frames_json_end[]   asm("_binary_can_frames_json_end");
 extern const uint8_t coding_guide_html_start[] asm("_binary_coding_guide_html_start");
 extern const uint8_t coding_guide_html_end[]   asm("_binary_coding_guide_html_end");
+extern const uint8_t endstop_guide_html_start[] asm("_binary_endstop_guide_html_start");
+extern const uint8_t endstop_guide_html_end[]   asm("_binary_endstop_guide_html_end");
 
 /* CAN Config */
 #define TX_GPIO_NUM 17   // GPIO para transmisión CAN
@@ -884,6 +886,13 @@ static esp_err_t coding_guide_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+static esp_err_t endstop_guide_get_handler(httpd_req_t *req) {
+    httpd_resp_set_type(req, "text/html");
+    httpd_resp_send(req, (const char *)endstop_guide_html_start,
+                    endstop_guide_html_end - endstop_guide_html_start);
+    return ESP_OK;
+}
+
 // Handle API Execute Step (Parameters: action, step)
 static esp_err_t execute_step_post_handler(httpd_req_t *req) {
     char buf[128];
@@ -947,6 +956,7 @@ static const httpd_uri_t style_uri = { .uri = "/style.css", .method = HTTP_GET, 
 static const httpd_uri_t script_uri = { .uri = "/script.js", .method = HTTP_GET, .handler = script_get_handler };
 static const httpd_uri_t step_json_uri = { .uri = "/can_frames.json", .method = HTTP_GET, .handler = step_json_get_handler };
 static const httpd_uri_t coding_guide_uri = { .uri = "/guia-codificacion.html", .method = HTTP_GET, .handler = coding_guide_get_handler };
+static const httpd_uri_t endstop_guide_uri = { .uri = "/guia-topes.html", .method = HTTP_GET, .handler = endstop_guide_get_handler };
 static const httpd_uri_t execute_step_uri = { .uri = "/api/execute_step", .method = HTTP_POST, .handler = execute_step_post_handler };
 static const httpd_uri_t set_lang_uri = { .uri = "/api/set_lang", .method = HTTP_POST, .handler = set_lang_post_handler };
 static const httpd_uri_t last_rx_uri = { .uri = "/api/last_rx", .method = HTTP_GET, .handler = last_rx_get_handler };
@@ -963,6 +973,7 @@ static httpd_handle_t start_webserver(void) {
         httpd_register_uri_handler(server, &script_uri);
         httpd_register_uri_handler(server, &step_json_uri);
         httpd_register_uri_handler(server, &coding_guide_uri);
+        httpd_register_uri_handler(server, &endstop_guide_uri);
         httpd_register_uri_handler(server, &execute_step_uri);
         httpd_register_uri_handler(server, &set_lang_uri);
         httpd_register_uri_handler(server, &last_rx_uri);

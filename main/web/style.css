@@ -435,3 +435,26 @@ body.guide-body {
 .guide-section p:last-child {
     margin-bottom: 0;
 }
+
+.guide-list {
+    margin: 0 0 8px 0;
+    padding-left: 1.25rem;
+    font-size: inherit;
+    line-height: 1.5;
+}
+
+.guide-list li {
+    margin-bottom: 6px;
+}
+
+.guide-list li:last-child {
+    margin-bottom: 0;
+}
+
+.guide-ol {
+    list-style-type: decimal;
+}
+
+.action2-help-bar {
+    margin: 0 0 16px 0;
+}

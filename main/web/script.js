@@ -4,35 +4,214 @@ const translations = {
         status: "Dispositivo conectado y listo.",
         next: "Ejecutar Paso",
         finish: "Finalizar",
-        completed: "¡Acción completada!"
+        completed: "¡Acción completada!",
+        alertNeedByte: "Configura el byte XX y luego ejecuta el Paso 1.",
+        errorGeneric: "Error",
+        coding: {
+            codingTitle: "Configuración del byte XX",
+            help: "Ayuda",
+            debugRx: "Respuesta RX:",
+            dsrSub: "DSR — Recomendación de dirección",
+            dsrOn: "Si Activado — Asistencia a la estabilidad mediante impulso en el volante",
+            dsrOff: "Si Desactivado — Sin asistencia en situaciones de inestabilidad",
+            parkSub: "Asistente de aparcamiento",
+            parkOn: "Si Activo — Vehículo con Park Assist instalado",
+            parkOff: "Si Desactivado — Vehículo sin aparcamiento automático",
+            tscSub: "TSC — Compensación de tirado lateral",
+            tsc0: "Desactivado — Sin compensación (motores pequeños o tracción total)",
+            tsc4: "Con valores aprendidos — Compensación adaptativa (tracción delantera, motor potente)",
+            tsc8: "Sin valores de aprendizaje — Compensación fija",
+            laneSub: "Asistente de mantenimiento de carril",
+            laneOn: "Activado — Vehículo equipado con cámara frontal",
+            laneOff: "Desactivado — Vehículo sin cámara frontal",
+            angSub: "Sensor de ángulo de dirección externo",
+            angOn: "Activado — Si vehículo con sensor independiente",
+            angOff: "Desactivado — Sensor interno integrado en cremallera (habitual)",
+            profSub: "Selección del perfil de conductor",
+            profOn: "Si Activado — Dureza de dirección variable según modo de conducción",
+            profOff: "Si Desactivado — Dureza de dirección constante"
+        },
+        endstopHelp: {
+            barTitle: "Guía de ajuste de topes"
+        }
     },
     en: {
         title: "Lizarte On! Configurator",
         status: "Device connected and ready.",
-        next: "Execute Step",
+        next: "Execute step",
         finish: "Finish",
-        completed: "Action completed!"
+        completed: "Action completed!",
+        alertNeedByte: "Configure byte XX and then run step 1.",
+        errorGeneric: "Error",
+        coding: {
+            codingTitle: "Byte XX configuration",
+            help: "Help",
+            debugRx: "RX response:",
+            dsrSub: "DSR — Steering recommendation",
+            dsrOn: "If enabled — Stability assist via steering impulse",
+            dsrOff: "If disabled — No assist in instability situations",
+            parkSub: "Park Assist",
+            parkOn: "If active — Vehicle with Park Assist installed",
+            parkOff: "If disabled — Vehicle without automatic parking",
+            tscSub: "TSC — Side-pull compensation",
+            tsc0: "Disabled — No compensation (small engines or all-wheel drive)",
+            tsc4: "With learned values — Adaptive compensation (front-wheel drive, powerful engine)",
+            tsc8: "Without learned values — Fixed compensation",
+            laneSub: "Lane keeping assist",
+            laneOn: "Enabled — Vehicle with front camera",
+            laneOff: "Disabled — Vehicle without front camera",
+            angSub: "External steering angle sensor",
+            angOn: "Enabled — Vehicle with standalone sensor",
+            angOff: "Disabled — Sensor integrated in rack (typical)",
+            profSub: "Driver profile selection",
+            profOn: "If enabled — Steering effort varies with driving mode",
+            profOff: "If disabled — Constant steering effort"
+        },
+        endstopHelp: {
+            barTitle: "Endstop adjustment guide"
+        }
     },
     fr: {
         title: "Lizarte On! Configurator",
-        status: "Appareil connecté y listo.",
+        status: "Appareil connecté et prêt.",
         next: "Exécuter l'étape",
         finish: "Terminer",
-        completed: "Action terminée!"
+        completed: "Action terminée !",
+        alertNeedByte: "Configurez l'octet XX puis exécutez l'étape 1.",
+        errorGeneric: "Erreur",
+        coding: {
+            codingTitle: "Configuration de l'octet XX",
+            help: "Aide",
+            debugRx: "Réponse RX :",
+            dsrSub: "DSR — Recommandation de direction",
+            dsrOn: "Si activé — Assistance à la stabilité par impulsion sur le volant",
+            dsrOff: "Si désactivé — Pas d'assistance en situation d'instabilité",
+            parkSub: "Assistant de stationnement",
+            parkOn: "Si actif — Véhicule avec Park Assist installé",
+            parkOff: "Si désactivé — Véhicule sans stationnement automatique",
+            tscSub: "TSC — Compensation du tirage latéral",
+            tsc0: "Désactivé — Pas de compensation (petits moteurs ou transmission intégrale)",
+            tsc4: "Avec valeurs apprises — Compensation adaptative (traction avant, moteur puissant)",
+            tsc8: "Sans valeurs d'apprentissage — Compensation fixe",
+            laneSub: "Assistant de maintien de voie",
+            laneOn: "Activé — Véhicule avec caméra avant",
+            laneOff: "Désactivé — Véhicule sans caméra avant",
+            angSub: "Capteur d'angle de direction externe",
+            angOn: "Activé — Véhicule avec capteur indépendant",
+            angOff: "Désactivé — Capteur interne dans la crémaillère (courant)",
+            profSub: "Sélection du profil conducteur",
+            profOn: "Si activé — Effort de direction variable selon le mode de conduite",
+            profOff: "Si désactivé — Effort de direction constant"
+        },
+        endstopHelp: {
+            barTitle: "Guide de réglage des butées"
+        }
     },
     de: {
         title: "Lizarte On! Configurator",
         status: "Gerät verbunden und bereit.",
         next: "Schritt ausführen",
         finish: "Abschließen",
-        completed: "Aktion abgeschlossen!"
+        completed: "Aktion abgeschlossen!",
+        alertNeedByte: "Byte XX konfigurieren und dann Schritt 1 ausführen.",
+        errorGeneric: "Fehler",
+        coding: {
+            codingTitle: "Byte-XX-Konfiguration",
+            help: "Hilfe",
+            debugRx: "RX-Antwort:",
+            dsrSub: "DSR — Lenkempfehlung",
+            dsrOn: "Wenn aktiv — Stabilitätshilfe durch Lenkimpuls",
+            dsrOff: "Wenn inaktiv — Keine Hilfe bei Instabilität",
+            parkSub: "Parkassistent",
+            parkOn: "Wenn aktiv — Fahrzeug mit Park Assist",
+            parkOff: "Wenn inaktiv — Fahrzeug ohne automatisches Einparken",
+            tscSub: "TSC — Seitlichen Zug ausgleichen",
+            tsc0: "Deaktiviert — Kein Ausgleich (kleine Motoren oder Allrad)",
+            tsc4: "Mit Lerndaten — Adaptiver Ausgleich (Frontantrieb, starker Motor)",
+            tsc8: "Ohne Lerndaten — Fester Ausgleich",
+            laneSub: "Spurhalteassistent",
+            laneOn: "Aktiv — Fahrzeug mit Frontkamera",
+            laneOff: "Inaktiv — Fahrzeug ohne Frontkamera",
+            angSub: "Externer Lenkwinkelsensor",
+            angOn: "Aktiv — Fahrzeug mit separatem Sensor",
+            angOff: "Inaktiv — Sensor im Lenkgetriebe integriert (üblich)",
+            profSub: "Fahrerprofil-Auswahl",
+            profOn: "Wenn aktiv — Lenkkräfte je nach Fahrmodus",
+            profOff: "Wenn inaktiv — Konstante Lenkkräfte"
+        },
+        endstopHelp: {
+            barTitle: "Leitfaden Anschlag-Einstellung"
+        }
     }
 };
+
+function applyEndstopHelpLang(lang) {
+    const e = translations[lang]?.endstopHelp;
+    const c = translations[lang]?.coding;
+    if (!e || !c) return;
+    const titleEl = document.getElementById('i18n-action2-help-title');
+    if (titleEl) titleEl.textContent = e.barTitle;
+    const link = document.getElementById('action2-help-link');
+    if (link) {
+        link.textContent = c.help;
+        link.href = '/guia-topes.html?lang=' + encodeURIComponent(lang);
+    }
+}
+
+function applyCodingUiLang(lang) {
+    const c = translations[lang]?.coding;
+    if (!c) return;
+    const set = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    };
+    set('i18n-coding-title', c.codingTitle);
+    set('i18n-debug-rx', c.debugRx);
+    set('i18n-dsr-sub', c.dsrSub);
+    set('i18n-dsr-on', c.dsrOn);
+    set('i18n-dsr-off', c.dsrOff);
+    set('i18n-park-sub', c.parkSub);
+    set('i18n-park-on', c.parkOn);
+    set('i18n-park-off', c.parkOff);
+    set('i18n-tsc-sub', c.tscSub);
+    set('i18n-tsc-0', c.tsc0);
+    set('i18n-tsc-4', c.tsc4);
+    set('i18n-tsc-8', c.tsc8);
+    set('i18n-lane-sub', c.laneSub);
+    set('i18n-lane-on', c.laneOn);
+    set('i18n-lane-off', c.laneOff);
+    set('i18n-ang-sub', c.angSub);
+    set('i18n-ang-on', c.angOn);
+    set('i18n-ang-off', c.angOff);
+    set('i18n-prof-sub', c.profSub);
+    set('i18n-prof-on', c.profOn);
+    set('i18n-prof-off', c.profOff);
+    const help = document.getElementById('help-guide-link');
+    if (help) {
+        help.textContent = c.help;
+        help.href = '/guia-codificacion.html?lang=' + encodeURIComponent(lang);
+    }
+}
 
 let canData = null;
 let currentActionKey = null;
 let currentStepIdx = 0;
 let xxTouched = false;
+
+const SUPPORTED_LANGS = ['es', 'en', 'fr', 'de'];
+
+function applyLangFromUrl() {
+    const q = new URLSearchParams(window.location.search).get('lang');
+    if (!q) return;
+    const lang = q.toLowerCase();
+    if (!SUPPORTED_LANGS.includes(lang)) return;
+    const sel = document.getElementById('language-select');
+    if (sel) sel.value = lang;
+    const cleanPath = window.location.pathname || '/';
+    if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', cleanPath);
+    }
+}
 
 function getStepOrderForAction(actionKey) {
     // Acción 1: el paso 2 se ejecuta automáticamente dentro del paso 1 del firmware
@@ -67,10 +246,13 @@ async function loadCanData() {
 function changeLanguage() {
     const lang = document.getElementById('language-select').value;
     const t = translations[lang];
+    document.documentElement.lang = lang;
 
     // Main screen texts
     document.getElementById('title').innerText = t.title;
     document.getElementById('status-text').innerText = t.status;
+    applyCodingUiLang(lang);
+    applyEndstopHelpLang(lang);
 
     // Sync button titles with can_frames.json if available
     if (canData) {
@@ -138,6 +320,16 @@ function updateStepUI() {
             selectorCard.classList.add('hidden');
         }
     }
+
+    const action2HelpBar = document.getElementById('action2-help-bar');
+    if (action2HelpBar) {
+        if (currentActionKey === 'action2') {
+            action2HelpBar.classList.remove('hidden');
+        } else {
+            action2HelpBar.classList.add('hidden');
+        }
+    }
+    applyEndstopHelpLang(lang);
 
     // Progress
     const totalUi = Math.max(1, getTotalUiSteps());
@@ -215,7 +407,7 @@ async function executeStep() {
     if (currentActionKey === 'action1' && actualStepIdx === 0) {
         const selectedValue = updateCodingByte();
         if (!xxTouched || !selectedValue) {
-            alert("Configura el byte XX y luego ejecuta el Paso 1.");
+            alert(translations[lang].alertNeedByte);
             btn.disabled = false;
             return;
         }
@@ -273,7 +465,7 @@ async function executeStep() {
                 btn.onclick = showMainScreen; // Temporary override for final click
             }
         } else {
-            alert("Error");
+            alert(translations[lang].errorGeneric);
             btn.disabled = false;
         }
     } catch (err) {
@@ -283,6 +475,7 @@ async function executeStep() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    applyLangFromUrl();
     loadCanData().then(() => {
         changeLanguage();
     });

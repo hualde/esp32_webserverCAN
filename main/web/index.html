@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 Control Panel</title>
+    <title>Lizarte On! Configurator</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,11 +34,11 @@
 
                 <div class="button-group">
                     <button id="btn-1" class="action-btn" onclick="startAction('action1')">
-                        <span class="btn-icon">⚡</span>
+                        <span class="btn-icon">⚙️</span>
                         <span class="btn-text">Acción 1</span>
                     </button>
                     <button id="btn-2" class="action-btn" onclick="startAction('action2')">
-                        <span class="btn-icon">⚙️</span>
+                        <span class="btn-icon">⚡</span>
                         <span class="btn-text">Acción 2</span>
                     </button>
                 </div>
@@ -58,75 +58,82 @@
                 </div>
                 <p id="step-description">Descripción del paso...</p>
                 <div id="key-debug" class="debug-card hidden">
-                    <span class="debug-label">Respuesta RX:</span>
+                    <span class="debug-label" id="i18n-debug-rx">Respuesta RX:</span>
                     <span id="key-debug-value">---</span>
+                </div>
+                <div id="action2-help-bar" class="selector-card action2-help-bar hidden">
+                    <div class="selector-card-head">
+                        <div class="selector-title" id="i18n-action2-help-title">Guía de ajuste de topes</div>
+                        <a href="/guia-topes.html" target="_blank" rel="noopener noreferrer"
+                            class="help-link-btn" id="action2-help-link">Ayuda</a>
+                    </div>
                 </div>
                 <div id="step2-selector" class="selector-card hidden">
                     <div class="selector-card-head">
-                        <div class="selector-title">Configuración del byte XX</div>
+                        <div class="selector-title" id="i18n-coding-title">Selecciona las opciones de configuración</div>
                         <a href="/guia-codificacion.html" target="_blank" rel="noopener noreferrer"
-                            class="help-link-btn">Ayuda</a>
+                            class="help-link-btn" id="help-guide-link">Ayuda</a>
                     </div>
 
                     <div class="selector-group">
-                        <div class="selector-subtitle">DSR — Recomendación de dirección</div>
+                        <div class="selector-subtitle" id="i18n-dsr-sub">DSR — Recomendación de dirección</div>
                         <label class="selector-option selector-option-multiline">
                             <input type="checkbox" id="bit0-dsr">
-                            <span>Si Activado — Asistencia a la estabilidad mediante impulso en el volante</span>
+                            <span id="i18n-dsr-on">Si Activado — Asistencia a la estabilidad mediante impulso en el volante</span>
                         </label>
-                        <p class="selector-hint">Si Desactivado — Sin asistencia en situaciones de inestabilidad</p>
+                        <p class="selector-hint" id="i18n-dsr-off">Si Desactivado — Sin asistencia en situaciones de inestabilidad</p>
                     </div>
 
                     <div class="selector-group">
-                        <div class="selector-subtitle">Asistente de aparcamiento</div>
+                        <div class="selector-subtitle" id="i18n-park-sub">Asistente de aparcamiento</div>
                         <label class="selector-option selector-option-multiline">
                             <input type="checkbox" id="bit1-parking">
-                            <span>Si Activo — Vehículo con Park Assist instalado</span>
+                            <span id="i18n-park-on">Si Activo — Vehículo con Park Assist instalado</span>
                         </label>
-                        <p class="selector-hint">Si Desactivado — Vehículo sin aparcamiento automático</p>
+                        <p class="selector-hint" id="i18n-park-off">Si Desactivado — Vehículo sin aparcamiento automático</p>
                     </div>
 
                     <div class="selector-group">
-                        <div class="selector-subtitle">TSC — Compensación de tirado lateral</div>
+                        <div class="selector-subtitle" id="i18n-tsc-sub">TSC — Compensación de tirado lateral</div>
                         <label class="selector-option selector-option-multiline">
                             <input type="radio" name="tsc" value="0x00" checked>
-                            <span>Desactivado — Sin compensación (motores pequeños o tracción total)</span>
+                            <span id="i18n-tsc-0">Desactivado — Sin compensación (motores pequeños o tracción total)</span>
                         </label>
                         <label class="selector-option selector-option-multiline">
                             <input type="radio" name="tsc" value="0x04">
-                            <span>Con valores aprendidos — Compensación adaptativa (tracción delantera, motor potente)</span>
+                            <span id="i18n-tsc-4">Con valores aprendidos — Compensación adaptativa (tracción delantera, motor potente)</span>
                         </label>
                         <label class="selector-option selector-option-multiline">
                             <input type="radio" name="tsc" value="0x08">
-                            <span>Sin valores de aprendizaje — Compensación fija</span>
+                            <span id="i18n-tsc-8">Sin valores de aprendizaje — Compensación fija</span>
                         </label>
                     </div>
 
                     <div class="selector-group">
-                        <div class="selector-subtitle">Asistente de mantenimiento de carril</div>
+                        <div class="selector-subtitle" id="i18n-lane-sub">Asistente de mantenimiento de carril</div>
                         <label class="selector-option selector-option-multiline">
                             <input type="checkbox" id="bit4-lane">
-                            <span>Activado — Vehículo equipado con cámara frontal</span>
+                            <span id="i18n-lane-on">Activado — Vehículo equipado con cámara frontal</span>
                         </label>
-                        <p class="selector-hint">Desactivado — Vehículo sin cámara frontal</p>
+                        <p class="selector-hint" id="i18n-lane-off">Desactivado — Vehículo sin cámara frontal</p>
                     </div>
 
                     <div class="selector-group">
-                        <div class="selector-subtitle">Sensor de ángulo de dirección externo</div>
+                        <div class="selector-subtitle" id="i18n-ang-sub">Sensor de ángulo de dirección externo</div>
                         <label class="selector-option selector-option-multiline">
                             <input type="checkbox" id="bit5-angle">
-                            <span>Activado — Si vehículo con sensor independiente</span>
+                            <span id="i18n-ang-on">Activado — Si vehículo con sensor independiente</span>
                         </label>
-                        <p class="selector-hint">Desactivado — Sensor interno integrado en cremallera (habitual)</p>
+                        <p class="selector-hint" id="i18n-ang-off">Desactivado — Sensor interno integrado en cremallera (habitual)</p>
                     </div>
 
                     <div class="selector-group">
-                        <div class="selector-subtitle">Selección del perfil de conductor</div>
+                        <div class="selector-subtitle" id="i18n-prof-sub">Selección del perfil de conductor</div>
                         <label class="selector-option selector-option-multiline">
                             <input type="checkbox" id="bit7-profile">
-                            <span>Si Activado — Dureza de dirección variable según modo de conducción</span>
+                            <span id="i18n-prof-on">Si Activado — Dureza de dirección variable según modo de conducción</span>
                         </label>
-                        <p class="selector-hint">Si Desactivado — Dureza de dirección constante</p>
+                        <p class="selector-hint" id="i18n-prof-off">Si Desactivado — Dureza de dirección constante</p>
                     </div>
 
                     <div class="selector-result">

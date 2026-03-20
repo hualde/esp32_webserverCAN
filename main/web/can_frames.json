@@ -2,17 +2,17 @@
     "action1": {
         "title": {
             "es": "Codificación",
-            "en": "Stop Calibration",
-            "fr": "Calibrage des Butées",
-            "de": "Anschlagkalibrierung"
+            "en": "Coding",
+            "fr": "Codification",
+            "de": "Codierung"
         },
         "steps": [
             {
                 "description": {
-                    "es": "Paso 1: Seguridad UDS + ejecución automática del Paso 2",
-                    "en": "Step 1: Session and security unlock",
-                    "fr": "Étape 1 : Session et déverrouillage sécurité",
-                    "de": "Schritt 1: Sitzung und Sicherheitsfreigabe"
+                    "es": "Paso 1: Selección de las opciones de configuración",
+                    "en": "Step 1: Selection of configuration options",
+                    "fr": "Étape 1 : Sélection des options de configuration",
+                    "de": "Schritt 1: Auswahl der Konfigurationsoptionen"
                 },
                 "frames": [
                     {
@@ -37,10 +37,10 @@
             },
             {
                 "description": {
-                    "es": "Paso 2 (automático): Escritura fingerprint, fecha y coding (byte XX)",
-                    "en": "Step 2: Write fingerprint, date and coding (byte XX)",
-                    "fr": "Étape 2 : Empreinte, date et codage (octet XX)",
-                    "de": "Schritt 2: Fingerprint, Datum und Codierung (Byte XX)"
+                    "es": "Paso 2: Escritura, fecha y codificación",
+                    "en": "Step 2: Write, date and coding",
+                    "fr": "Étape 2 : Écriture, date et codage",
+                    "de": "Schritt 2: Schreiben, Datum und Codierung"
                 },
                 "frames": []
             },

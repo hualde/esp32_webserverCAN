@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guía de ajuste de topes — Dirección asistida</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+
+<body class="guide-body">
+    <div class="glass-container guide-wrap">
+        <header class="guide-page-header">
+            <a href="/" class="guide-back-link" id="guide-back-link">← Volver</a>
+        </header>
+
+        <div class="guide-lang-panel" data-guide-lang="es">
+            <article class="guide-article">
+                <h1 class="guide-h1">Guía de ajuste de topes — Dirección asistida</h1>
+                <p class="guide-lead">Plataforma MQB (Grupo VAG)</p>
+                <p>Este proceso enseña a la ECU de dirección los límites mecánicos de giro del volante (tope izquierdo y
+                    tope derecho). Es necesario realizarlo después de sustituir la cremallera de dirección, la columna de
+                    dirección o la propia ECU de dirección asistida.</p>
+
+                <section class="guide-section">
+                    <h2 class="guide-h2">Requisitos previos</h2>
+                    <ul class="guide-list">
+                        <li>Vehículo con el motor en marcha o contacto puesto y batería estable (mínimo 12 V).</li>
+                        <li>Ruedas delanteras libres para girar (vehículo elevado o sobre superficie lisa).</li>
+                        <li>La codificación de la ECU debe estar completada antes de iniciar este proceso.</li>
+                    </ul>
+                </section>
+
+                <section class="guide-section">
+                    <h2 class="guide-h2">Procedimiento</h2>
+                    <p>Cuando el software indique que la rutina está activa, girar el volante siguiendo estas
+                        instrucciones:</p>
+                    <ol class="guide-list guide-ol">
+                        <li>Girar el volante a fondo hacia un lado hasta el tope mecánico. Mantener la presión contra el
+                            tope durante 3 segundos.</li>
+                        <li>Girar el volante a fondo hacia el lado contrario hasta el tope mecánico. Mantener la presión
+                            contra el tope durante 3 segundos.</li>
+                        <li>Devolver el volante al centro y mantenerlo recto.</li>
+                    </ol>
+                    <p>El software indicará automáticamente cuando la ECU haya registrado los topes correctamente. Una vez
+                        confirmado, no es necesaria ninguna acción adicional por parte del operario. El software completará
+                        el proceso automáticamente, incluyendo el borrado de errores generados durante la calibración.</p>
+                </section>
+
+                <section class="guide-section">
+                    <h2 class="guide-h2">Si la calibración falla</h2>
+                    <ul class="guide-list">
+                        <li>Verificar que se ha mantenido la presión en cada tope durante al menos 3 segundos.</li>
+                        <li>Verificar que el volante ha llegado realmente al tope mecánico y no se ha quedado a medio
+                            recorrido.</li>
+                        <li>Repetir el proceso desde el inicio.</li>
+                    </ul>
+                </section>
+            </article>
+        </div>
+
+        <div class="guide-lang-panel" data-guide-lang="en" hidden>
+            <article class="guide-article">
+                <h1 class="guide-h1">Endstop adjustment guide — Power steering</h1>
+                <p class="guide-lead">MQB platform (VAG Group)</p>
+                <p>This procedure teaches the steering ECU the mechanical steering limits (left and right stops). It must
+                    be carried out after replacing the steering rack, steering column or the power-steering ECU itself.</p>
+
+                <section class="guide-section">
+                    <h2 class="guide-h2">Prerequisites</h2>
+                    <ul class="guide-list">
+                        <li>Engine running or ignition on, with a stable battery (minimum 12 V).</li>
+                        <li>Front wheels free to turn (vehicle raised or on a smooth surface).</li>
+                        <li>ECU coding must be completed before starting this process.</li>
+                    </ul>
+                </section>
+
+                <section class="guide-section">
+                    <h2 class="guide-h2">Procedure</h2>
+                    <p>When the software shows that the routine is active, turn the steering wheel as follows:</p>
+                    <ol class="guide-list guide-ol">
+                        <li>Turn the wheel fully to one side until the mechanical stop. Hold pressure against the stop for
+                            3 seconds.</li>
+                        <li>Turn the wheel fully to the opposite side until the mechanical stop. Hold pressure against the
+                            stop for 3 seconds.</li>
+                        <li>Return the wheel to the centre and keep it straight.</li>
+                    </ol>
+                    <p>The software will automatically indicate when the ECU has successfully learned the stops. After
+                        confirmation, no further action is required from the operator. The software will complete the
+                        process automatically, including clearing faults generated during calibration.</p>
+                </section>
+
+                <section class="guide-section">
+                    <h2 class="guide-h2">If calibration fails</h2>
+                    <ul class="guide-list">
+                        <li>Check that pressure was held at each stop for at least 3 seconds.</li>
+                        <li>Check that the wheel truly reached the mechanical stop and did not stop mid-travel.</li>
+                        <li>Repeat the process from the beginning.</li>
+                    </ul>
+                </section>
+            </article>
+        </div>
+
+        <div class="guide-lang-panel" data-guide-lang="fr" hidden>
+            <article class="guide-article">
+                <h1 class="guide-h1">Guide de réglage des butées — Direction assistée</h1>
+                <p class="guide-lead">Plateforme MQB (groupe VAG)</p>
+                <p>Ce processus apprend au calculateur de direction les butées mécaniques de braquage (butée gauche et
+                    butée droite). Il doit être effectué après remplacement de la crémaillère, de la colonne de direction ou
+                    du calculateur de direction assistée lui-même.</p>
+
+                <section class="guide-section">
+                    <h2 class="guide-h2">Prérequis</h2>
+                    <ul class="guide-list">
+                        <li>Véhicule moteur tournant ou contact mis, batterie stable (12 V minimum).</li>
+                        <li>Roues avant libres de pivoter (véhicule sur pont ou surface lisse).</li>
+                        <li>La codification du calculateur doit être terminée avant de lancer cette procédure.</li>
+                    </ul>
+                </section>
+
+                <section class="guide-section">
+                    <h2 class="guide-h2">Procédure</h2>
+                    <p>Lorsque le logiciel indique que la routine est active, tournez le volant comme suit :</p>
+                    <ol class="guide-list guide-ol">
+                        <li>Tourner le volant à fond d'un côté jusqu'à la butée mécanique. Maintenir la pression contre la
+                            butée pendant 3 secondes.</li>
+                        <li>Tourner le volant à fond de l'autre côté jusqu'à la butée mécanique. Maintenir la pression
+                            pendant 3 secondes.</li>
+                        <li>Remettre le volant au centre et le maintenir droit.</li>
+                    </ol>
+                    <p>Le logiciel indiquera automatiquement lorsque le calculateur a mémorisé les butées. Une fois
+                        confirmé, aucune autre action n'est nécessaire. Le logiciel terminera le processus automatiquement,
+                        y compris l'effacement des défauts apparus pendant la calibration.</p>
+                </section>
+
+                <section class="guide-section">
+                    <h2 class="guide-h2">Si la calibration échoue</h2>
+                    <ul class="guide-list">
+                        <li>Vérifier que la pression a été maintenue sur chaque butée au moins 3 secondes.</li>
+                        <li>Vérifier que le volant atteint réellement la butée mécanique et ne s'arrête pas à mi-course.</li>
+                        <li>Recommencer la procédure depuis le début.</li>
+                    </ul>
+                </section>
+            </article>
+        </div>
+
+        <div class="guide-lang-panel" data-guide-lang="de" hidden>
+            <article class="guide-article">
+                <h1 class="guide-h1">Leitfaden Anschlag-Einstellung — Servolenkung</h1>
+                <p class="guide-lead">MQB-Plattform (VAG-Konzern)</p>
+                <p>Dieser Ablauf bringt dem Lenk-Steuergerät die mechanischen Lenkanschläge (links und rechts) bei. Er ist
+                    nach Austausch der Lenkgetriebe, der Lenksäule oder des Servolenkungs-Steuergeräts erforderlich.</p>
+
+                <section class="guide-section">
+                    <h2 class="guide-h2">Voraussetzungen</h2>
+                    <ul class="guide-list">
+                        <li>Fahrzeug mit laufendem Motor oder eingeschalteter Zündung, stabiler Batterie (mindestens 12
+                            V).</li>
+                        <li>Vorderräder frei drehbar (Fahrzeug gehoben oder auf glatter Fläche).</li>
+                        <li>Die Steuergeräte-Codierung muss vor diesem Prozess abgeschlossen sein.</li>
+                    </ul>
+                </section>
+
+                <section class="guide-section">
+                    <h2 class="guide-h2">Ablauf</h2>
+                    <p>Wenn die Software anzeigt, dass die Routine aktiv ist, das Lenkrad wie folgt verfahren:</p>
+                    <ol class="guide-list guide-ol">
+                        <li>Lenkrad bis zum mechanischen Anschlag in eine Richtung drehen. Druck gegen den Anschlag 3
+                            Sekunden halten.</li>
+                        <li>Lenkrad bis zum gegenüberliegenden mechanischen Anschlag drehen. Druck 3 Sekunden halten.</li>
+                        <li>Lenkrad mittig stellen und gerade halten.</li>
+                    </ol>
+                    <p>Die Software meldet automatisch, wenn das Steuergerät die Anschläge korrekt gespeichert hat. Danach
+                        sind keine weiteren Handgriffe nötig. Der Ablauf wird automatisch abgeschlossen, einschließlich
+                        Löschen der während der Kalibrierung entstandenen Fehler.</p>
+                </section>
+
+                <section class="guide-section">
+                    <h2 class="guide-h2">Wenn die Kalibrierung fehlschlägt</h2>
+                    <ul class="guide-list">
+                        <li>Prüfen, ob an jedem Anschlag mindestens 3 Sekunden Druck gehalten wurde.</li>
+                        <li>Prüfen, ob das Lenkrad den mechanischen Anschlag wirklich erreicht hat und nicht mittig stehen
+                            geblieben ist.</li>
+                        <li>Vorgang von vorne beginnen.</li>
+                    </ul>
+                </section>
+            </article>
+        </div>
+    </div>
+    <script>
+        (function () {
+            var lang = (new URLSearchParams(location.search).get('lang') || 'es').toLowerCase();
+            if (!/^(es|en|fr|de)$/.test(lang)) lang = 'es';
+            document.documentElement.lang = lang;
+            document.querySelectorAll('.guide-lang-panel').forEach(function (p) {
+                p.hidden = p.getAttribute('data-guide-lang') !== lang;
+            });
+            var titles = {
+                es: 'Guía de ajuste de topes — Dirección asistida',
+                en: 'Endstop adjustment guide — Power steering',
+                fr: 'Guide de réglage des butées — Direction assistée',
+                de: 'Leitfaden Anschlag-Einstellung — Servolenkung'
+            };
+            document.title = titles[lang] || titles.es;
+            var back = {
+                es: '← Volver',
+                en: '← Back',
+                fr: '← Retour',
+                de: '← Zurück'
+            };
+            var backEl = document.getElementById('guide-back-link');
+            if (backEl) {
+                backEl.textContent = back[lang] || back.es;
+                backEl.setAttribute('href', '/?lang=' + encodeURIComponent(lang));
+            }
+        })();
+    </script>
+</body>
+
+</html>
