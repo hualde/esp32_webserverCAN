@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guía de codificación — Dirección asistida</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+
+<body class="guide-body">
+    <div class="glass-container guide-wrap">
+        <header class="guide-page-header">
+            <a href="/" class="guide-back-link">← Volver</a>
+        </header>
+        <article class="guide-article">
+            <h1 class="guide-h1">Guía de codificación — Dirección asistida</h1>
+            <p class="guide-lead">Plataforma MQB (Grupo VAG)</p>
+            <p>Antes de codificar la pieza nueva, se recomienda leer la configuración de la pieza antigua para aplicar los
+                mismos valores a la nueva.</p>
+
+            <section class="guide-section">
+                <h2 class="guide-h2">DSR — Recomendación de dirección</h2>
+                <p>Trabaja junto al ESP. Si detecta inestabilidad, da un pequeño impulso en el volante para orientar al
+                    conductor. No gira el volante, solo sugiere. Viene activado de fábrica.</p>
+                <p><strong>Activado:</strong> el sistema interviene en situaciones de inestabilidad. Recomendado.</p>
+                <p><strong>Desactivado:</strong> dirección más libre, sin ayuda en emergencias. Puede generar error en el
+                    módulo ABS.</p>
+            </section>
+
+            <section class="guide-section">
+                <h2 class="guide-h2">Asistente de aparcamiento</h2>
+                <p>Indica si el vehículo dispone de aparcamiento automático (sensores de ultrasonidos laterales
+                    adicionales + módulo Park Assist).</p>
+                <p><strong>Montado/activo:</strong> el vehículo tiene el hardware instalado.</p>
+                <p><strong>No montado:</strong> el vehículo no dispone del sistema. Si se activa sin el hardware genera
+                    errores.</p>
+            </section>
+
+            <section class="guide-section">
+                <h2 class="guide-h2">TSC — Compensación de tirado lateral</h2>
+                <p>Corrige que el vehículo tire hacia un lado al acelerar fuerte. Solo aplica en tracción delantera con
+                    motor potente.</p>
+                <p><strong>Desactivado:</strong> sin compensación. Para motores pequeños o tracción total (4Motion /
+                    quattro).</p>
+                <p><strong>Con valores aprendidos:</strong> la ECU adapta la corrección con el uso. Opción habitual para
+                    motorizaciones potentes en tracción delantera.</p>
+                <p><strong>Sin valores de aprendizaje:</strong> corrección fija que no evoluciona. Para casos donde se
+                    prefiere un comportamiento constante.</p>
+            </section>
+
+            <section class="guide-section">
+                <h2 class="guide-h2">Asistente de mantenimiento de carril</h2>
+                <p>Indica si el vehículo dispone de la cámara frontal multifunción en la base del retrovisor interior.
+                    Corrige suavemente la dirección si el vehículo se sale del carril a partir de 65 km/h.</p>
+                <p><strong>Montado:</strong> el vehículo tiene la cámara instalada y codificada.</p>
+                <p><strong>No montado:</strong> el vehículo no dispone de la cámara. Si se activa sin ella genera errores.
+                </p>
+            </section>
+
+            <section class="guide-section">
+                <h2 class="guide-h2">Sensor de ángulo de dirección externo</h2>
+                <p>En la mayoría de vehículos MQB el sensor va integrado en la cremallera.</p>
+                <p><strong>Montado:</strong> se ha instalado un sensor de ángulo independiente externo a la cremallera.</p>
+                <p><strong>No montado:</strong> el vehículo usa el sensor interno integrado. Es lo habitual.</p>
+            </section>
+
+            <section class="guide-section">
+                <h2 class="guide-h2">Selección del perfil de conductor</h2>
+                <p>Permite que la dureza de la dirección cambie según el modo de conducción (Comfort, Normal, Sport).</p>
+                <p><strong>Activado:</strong> la dirección adapta su dureza al perfil seleccionado. Requiere que el
+                    vehículo disponga de perfiles de conducción.</p>
+                <p><strong>Desactivado:</strong> la dirección mantiene siempre la misma dureza. No causa errores si se
+                    activa sin el botón de perfiles, pero no tendrá efecto.</p>
+            </section>
+        </article>
+    </div>
+</body>
+
+</html>

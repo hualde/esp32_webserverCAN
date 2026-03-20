@@ -213,6 +213,36 @@ footer {
     font-weight: 700;
     font-size: 0.95rem;
     color: var(--secondary-color);
+    text-align: left;
+    flex: 1;
+    min-width: 0;
+}
+
+.selector-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 4px;
+}
+
+.help-link-btn {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(217, 1, 122, 0.35);
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--secondary-color);
+    text-decoration: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.help-link-btn:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 10px rgba(217, 1, 122, 0.12);
 }
 
 .selector-group {
@@ -238,6 +268,23 @@ footer {
     align-items: center;
     gap: 8px;
     font-size: 0.85rem;
+}
+
+.selector-option-multiline {
+    align-items: flex-start;
+}
+
+.selector-option-multiline input {
+    margin-top: 0.2em;
+    flex-shrink: 0;
+}
+
+.selector-hint {
+    margin: 0 0 0 28px;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    color: var(--secondary-color);
+    opacity: 0.9;
 }
 
 .selector-result {
@@ -303,4 +350,88 @@ footer {
     opacity: 0.5;
     cursor: wait;
     transform: none;
+}
+
+/* Página guía de codificación (/guia-codificacion.html) */
+body.guide-body {
+    align-items: flex-start;
+    padding: 24px 0 48px;
+}
+
+.guide-wrap {
+    max-width: 640px;
+    width: 92%;
+    text-align: left;
+    margin: 0 auto;
+}
+
+.guide-page-header {
+    margin-bottom: 16px;
+    text-align: left;
+}
+
+.guide-back-link {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--secondary-color);
+    text-decoration: none;
+}
+
+.guide-back-link:hover {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+.guide-article {
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: var(--text-color);
+}
+
+.guide-h1 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: -0.3px;
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.guide-lead {
+    font-weight: 600;
+    color: var(--secondary-color);
+    margin-bottom: 14px;
+}
+
+.guide-article > p:first-of-type {
+    margin-bottom: 20px;
+}
+
+.guide-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed rgba(217, 1, 122, 0.2);
+}
+
+.guide-section:first-of-type {
+    border-top: none;
+    padding-top: 0;
+    margin-top: 0;
+}
+
+.guide-h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+    margin-bottom: 10px;
+}
+
+.guide-section p {
+    margin-bottom: 8px;
+}
+
+.guide-section p:last-child {
+    margin-bottom: 0;
 }
