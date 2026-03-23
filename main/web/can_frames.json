@@ -111,28 +111,28 @@
             },
             {
                 "description": {
-                    "es": "Paso 2: Lectura de estado e inicio de rutina",
-                    "en": "Step 2: State read and start routine",
-                    "fr": "Étape 2 : Lecture d'état et démarrage de routine",
-                    "de": "Schritt 2: Status lesen und Routine starten"
+                    "es": "Paso 2: Lectura de estado inicial e inicio de rutina de ajuste",
+                    "en": "Step 2: Read initial state and start adjustment routine",
+                    "fr": "Étape 2 : Lecture de l'état initial et démarrage de la routine d'ajustement",
+                    "de": "Schritt 2: Anfangsstatus lesen und Einstellroutine starten"
                 },
                 "frames": []
             },
             {
                 "description": {
-                    "es": "Paso 3: Llevar el volante a tope izquierda, mantener 3 s; luego a tope derecha, mantener 3 s; y centrar el volante.",
-                    "en": "Step 3: Turn to full left lock, hold 3 s; then full right lock, hold 3 s; and center the steering.",
-                    "fr": "Étape 3 : Tourner en butée gauche, maintenir 3 s ; puis en butée droite, maintenir 3 s ; et centrer le volant.",
-                    "de": "Schritt 3: Lenkrad ganz links, 3 s halten; dann ganz rechts, 3 s halten; und das Lenkrad zentrieren."
+                    "es": "Paso 3: Gire el volante a tope a un lado (3 s), luego al contrario (3 s), y centre el volante. Espere a la confirmación automática.",
+                    "en": "Step 3: Turn the wheel fully to one side (3 s), then to the other side (3 s), and centre it. Wait for automatic confirmation.",
+                    "fr": "Étape 3 : Tournez le volant en butée d'un côté (3 s), puis de l'autre (3 s), et centrez-le. Attendez la confirmation automatique.",
+                    "de": "Schritt 3: Lenkrad ganz zu einer Seite drehen (3 s), dann zur anderen (3 s), und mittig stellen. Auf automatische Bestätigung warten."
                 },
                 "frames": []
             },
             {
                 "description": {
-                    "es": "Paso 4: Cierre y borrado DTC",
-                    "en": "Step 4: Closeout and clear DTC",
-                    "fr": "Étape 4 : Clôture et effacement DTC",
-                    "de": "Schritt 4: Abschluss und DTC löschen"
+                    "es": "Paso 4: Verificación, cierre de rutina y borrado de errores",
+                    "en": "Step 4: Verification, routine close and fault clearing",
+                    "fr": "Étape 4 : Vérification, clôture de routine et effacement des défauts",
+                    "de": "Schritt 4: Prüfung, Routine-Abschluss und Fehlerlöschung"
                 },
                 "frames": []
             }

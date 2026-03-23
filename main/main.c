@@ -43,6 +43,7 @@ static bool last_rx_valid = false;
 static char last_rx_line[128] = {0};
 static uint8_t pending_xx = 0x00;
 static bool pending_xx_valid = false;
+static bool action2_routine_started = false;
 
 /* Seguridad UDS: desbloqueo por seed/key */
 #define SEED_REQUEST_ID 0x712
@@ -332,7 +333,7 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                 /* Paso 2 acción 1: la trama 07 2E 06 00 XX 1F 00 00 se envía más abajo con el byte XX del query */
                 bool skip_auto_send =
                     (strcmp(action_key, "action1") == 0 && (step_idx == 0 || step_idx == 1 || step_idx == 2 || step_idx == 3 || step_idx == 4)) ||
-                    (strcmp(action_key, "action2") == 0 && (step_idx == 1 || step_idx == 3));
+                    (strcmp(action_key, "action2") == 0 && (step_idx == 1 || step_idx == 2 || step_idx == 3));
 
                 if (!skip_auto_send) {
                     for (int i = 0; i < frames_count; i++) {
@@ -567,262 +568,260 @@ step0_done:
                 }
 
                 if (strcmp(action_key, "action2") == 0 && step_idx == 1) {
-                    ESP_LOGI(TAG, "[action2] Paso 2: esperando 62 18 1B FF/CF y 71 01/71 03");
+                    /* Paso 2 protocolo: lectura 181B + Paso 3 protocolo: inicio rutina */
+                    ESP_LOGI(TAG, "[action2] Paso 2: lectura estado inicial 181B + inicio rutina");
+                    drain_rx_queue();
+                    last_rx_valid = false;
+                    action2_routine_started = false;
+                    twai_message_t rx_msg;
+
+                    /* --- Lectura DID 181B (multiframe) --- */
+                    const uint8_t read_181b[8] = {0x03,0x22,0x18,0x1B,0xFF,0xFF,0xFF,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, read_181b);
+
+                    bool got_ff = false;
+                    for (int i = 0; i < 50 && !got_ff; i++) {
+                        if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data[0] == 0x10 && rx_msg.data[2] == 0x62 &&
+                            rx_msg.data[3] == 0x18 && rx_msg.data[4] == 0x1B) {
+                            got_ff = true;
+                        }
+                    }
+
+                    if (got_ff) {
+                        const uint8_t fc[8] = {0x30,0x00,0x00,0xFF,0xFF,0xFF,0xFF,0xFF};
+                        send_can_frame(SEED_REQUEST_ID, fc);
+                        for (int i = 0; i < 50; i++) {
+                            if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
+                            if (rx_msg.identifier == SEED_RESPONSE_ID && rx_msg.data[0] == 0x21) {
+                                ESP_LOGI(TAG, "[action2] Estado inicial 181B leido");
+                                break;
+                            }
+                        }
+                    }
+
+                    /* --- Inicio rutina 31 01 04 16 (puede fallar si la ECU no la soporta) --- */
+                    const uint8_t routine_start[8] = {0x04,0x31,0x01,0x04,0x16,0xFF,0xFF,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, routine_start);
+
+                    bool routine_accepted = false;
+                    for (int i = 0; i < 50; i++) {
+                        if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
+                        if (rx_msg.identifier != SEED_RESPONSE_ID) continue;
+                        if (rx_msg.data[0] == 0x04 && rx_msg.data[1] == 0x71 &&
+                            rx_msg.data[2] == 0x01 && rx_msg.data[3] == 0x04 &&
+                            rx_msg.data[4] == 0x16) {
+                            routine_accepted = true;
+                            break;
+                        }
+                        if (rx_msg.data[1] == 0x7F && rx_msg.data[2] == 0x31) {
+                            ESP_LOGI(TAG, "[action2] ECU no soporta rutina (NRC=0x%02X), continuando", rx_msg.data[3]);
+                            break;
+                        }
+                    }
+                    action2_routine_started = routine_accepted;
+
+                    if (routine_accepted) {
+                        const uint8_t routine_status[8] = {0x04,0x31,0x03,0x04,0x16,0xFF,0xFF,0xFF};
+                        send_can_frame(SEED_REQUEST_ID, routine_status);
+                        for (int i = 0; i < 50; i++) {
+                            if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
+                            if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                                rx_msg.data[1] == 0x71 && rx_msg.data[2] == 0x03 &&
+                                rx_msg.data[3] == 0x04 && rx_msg.data[4] == 0x16) {
+                                snprintf(last_rx_line, sizeof(last_rx_line),
+                                         "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
+                                         (unsigned long)rx_msg.identifier,
+                                         rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
+                                         rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
+                                last_rx_valid = true;
+                                break;
+                            }
+                        }
+                    }
+                    step2_action2_ok = true;
+                }
+
+                if (strcmp(action_key, "action2") == 0 && step_idx == 2) {
+                    /* Paso 4 protocolo: polling 181B (multiframe) + Paso 5: verificación 1816 */
+                    ESP_LOGI(TAG, "[action2] Paso 3: polling 181B cada 400ms");
                     drain_rx_queue();
                     last_rx_valid = false;
                     twai_message_t rx_msg;
 
-                    const uint8_t read_181b[8] = {0x03,0x22,0x18,0x1B,0xFF,0xFF,0xFF,0xFF};
-                    send_can_frame(SEED_REQUEST_ID, read_181b);
+                    uint8_t prev_did[5] = {0xFF,0xFF,0xFF,0xFF,0xFF};
+                    int stable_count = 0;
+                    bool calibration_done = false;
 
                     for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code == 8 &&
-                            rx_msg.data[0] == 0x10 &&
-                            rx_msg.data[1] == 0x08 &&
-                            rx_msg.data[2] == 0x62 &&
-                            rx_msg.data[3] == 0x18 &&
-                            rx_msg.data[4] == 0x1B &&
-                            rx_msg.data[5] == 0x01 &&
-                            rx_msg.data[6] == 0x01 &&
-                            rx_msg.data[7] == 0x01) {
-                            break;
+                        const uint8_t read_181b[8] = {0x03,0x22,0x18,0x1B,0xFF,0xFF,0xFF,0xFF};
+                        if (!send_can_frame(SEED_REQUEST_ID, read_181b)) {
+                            vTaskDelay(pdMS_TO_TICKS(400));
+                            continue;
                         }
+
+                        /* Esperar first frame: 10 08 62 18 1B XX XX XX */
+                        uint8_t did_bytes[5] = {0};
+                        bool got_ff = false;
+                        for (int i = 0; i < 20 && !got_ff; i++) {
+                            if (twai_receive(&rx_msg, pdMS_TO_TICKS(100)) != ESP_OK) continue;
+                            if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                                rx_msg.data[0] == 0x10 && rx_msg.data[2] == 0x62 &&
+                                rx_msg.data[3] == 0x18 && rx_msg.data[4] == 0x1B) {
+                                did_bytes[0] = rx_msg.data[5];
+                                did_bytes[1] = rx_msg.data[6];
+                                did_bytes[2] = rx_msg.data[7];
+                                got_ff = true;
+                            }
+                        }
+
+                        if (got_ff) {
+                            const uint8_t fc[8] = {0x30,0x00,0x00,0xFF,0xFF,0xFF,0xFF,0xFF};
+                            send_can_frame(SEED_REQUEST_ID, fc);
+                            for (int i = 0; i < 20; i++) {
+                                if (twai_receive(&rx_msg, pdMS_TO_TICKS(100)) != ESP_OK) continue;
+                                if (rx_msg.identifier == SEED_RESPONSE_ID && rx_msg.data[0] == 0x21) {
+                                    did_bytes[3] = rx_msg.data[1];
+                                    did_bytes[4] = rx_msg.data[2];
+                                    break;
+                                }
+                            }
+
+                            ESP_LOGI(TAG, "[action2] 181B: %02X %02X %02X %02X %02X",
+                                     did_bytes[0], did_bytes[1], did_bytes[2], did_bytes[3], did_bytes[4]);
+
+                            if (did_bytes[0] == 0x01 && did_bytes[1] == 0x01 &&
+                                did_bytes[2] == 0x01 && did_bytes[3] == 0x01 &&
+                                did_bytes[4] == 0x01) {
+                                calibration_done = true;
+                            }
+
+                            if (memcmp(did_bytes, prev_did, 5) == 0) {
+                                stable_count++;
+                                if (stable_count >= 10) calibration_done = true;
+                            } else {
+                                stable_count = 0;
+                                memcpy(prev_did, did_bytes, 5);
+                            }
+                        }
+
+                        if (calibration_done) break;
+                        vTaskDelay(pdMS_TO_TICKS(400));
                     }
 
-                    const uint8_t fc_181b[8] = {0x30,0x00,0x00,0xFF,0xFF,0xFF,0xFF,0xFF};
-                    send_can_frame(SEED_REQUEST_ID, fc_181b);
-
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                    /* Paso 5 protocolo: verificación estado DID 1816 */
+                    ESP_LOGI(TAG, "[action2] Verificacion 1816");
+                    const uint8_t read_1816[8] = {0x03,0x22,0x18,0x16,0xFF,0xFF,0xFF,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, read_1816);
+                    for (int i = 0; i < 50; i++) {
+                        if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
                         if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code == 8 &&
-                            rx_msg.data[0] == 0x21 &&
-                            rx_msg.data[1] == 0x01 &&
-                            rx_msg.data[2] == 0x01) {
-                            break;
-                        }
-                    }
-
-                    const uint8_t routine_01[8] = {0x04,0x31,0x01,0x04,0x16,0xFF,0xFF,0xFF};
-                    send_can_frame(SEED_REQUEST_ID, routine_01);
-
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code == 8 &&
-                            rx_msg.data[0] == 0x04 &&
-                            rx_msg.data[1] == 0x71 &&
-                            rx_msg.data[2] == 0x01 &&
-                            rx_msg.data[3] == 0x04 &&
-                            rx_msg.data[4] == 0x16) {
-                            break;
-                        }
-                    }
-
-                    const uint8_t routine_03[8] = {0x04,0x31,0x03,0x04,0x16,0xFF,0xFF,0xFF};
-                    send_can_frame(SEED_REQUEST_ID, routine_03);
-
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code == 8 &&
-                            rx_msg.data[0] == 0x07 &&
-                            rx_msg.data[1] == 0x71 &&
-                            rx_msg.data[2] == 0x03 &&
-                            rx_msg.data[3] == 0x04 &&
-                            rx_msg.data[4] == 0x16 &&
-                            rx_msg.data[5] == 0x01) {
+                            rx_msg.data[0] == 0x07 && rx_msg.data[1] == 0x62 &&
+                            rx_msg.data[2] == 0x18 && rx_msg.data[3] == 0x16) {
                             snprintf(last_rx_line, sizeof(last_rx_line),
                                      "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
                                      (unsigned long)rx_msg.identifier,
                                      rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
                                      rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
                             last_rx_valid = true;
-                            step2_action2_ok = true;
+                            step3_action2_ok = true;
                             break;
                         }
-                    }
-                }
-
-                if (strcmp(action_key, "action2") == 0 && step_idx == 2) {
-                    ESP_LOGI(TAG, "[action2] Paso 3: polling 22 18 16 (400ms)");
-                    twai_message_t rx_msg;
-                    for (;;) {
-                        twai_message_t poll_msg;
-                        memset(&poll_msg, 0, sizeof(poll_msg));
-                        poll_msg.identifier = SEED_REQUEST_ID;
-                        poll_msg.extd = 0;
-                        poll_msg.rtr = 0;
-                        poll_msg.data_length_code = 8;
-                        poll_msg.data[0] = 0x03;
-                        poll_msg.data[1] = 0x22;
-                        poll_msg.data[2] = 0x18;
-                        poll_msg.data[3] = 0x16;
-                        poll_msg.data[4] = 0xFF;
-                        poll_msg.data[5] = 0xFF;
-                        poll_msg.data[6] = 0xFF;
-                        poll_msg.data[7] = 0xFF;
-
-                        if (twai_transmit(&poll_msg, pdMS_TO_TICKS(100)) != ESP_OK) {
-                            ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03X (22 18 16)", SEED_REQUEST_ID);
-                        }
-
-                        TickType_t start = xTaskGetTickCount();
-                        TickType_t window = pdMS_TO_TICKS(400);
-                        while ((xTaskGetTickCount() - start) < window) {
-                            if (twai_receive(&rx_msg, pdMS_TO_TICKS(50)) != ESP_OK) {
-                                continue;
-                            }
-                            if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                                rx_msg.data_length_code == 8 &&
-                                rx_msg.data[0] == 0x07 &&
-                                rx_msg.data[1] == 0x62 &&
-                                rx_msg.data[2] == 0x18 &&
-                                rx_msg.data[3] == 0x16 &&
-                                rx_msg.data[4] == 0x00 &&
-                                rx_msg.data[5] == 0x01 &&
-                                rx_msg.data[6] == 0x01 &&
-                                rx_msg.data[7] == 0x01) {
-                                snprintf(last_rx_line, sizeof(last_rx_line),
-                                         "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
-                                         (unsigned long)rx_msg.identifier,
-                                         rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
-                                         rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
-                                last_rx_valid = true;
-                                continue;
-                            }
-                            if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                                rx_msg.data_length_code == 8 &&
-                                rx_msg.data[0] == 0x07 &&
-                                rx_msg.data[1] == 0x62 &&
-                                rx_msg.data[2] == 0x18 &&
-                                rx_msg.data[3] == 0x16 &&
-                                rx_msg.data[4] == 0x00 &&
-                                rx_msg.data[5] == 0x00 &&
-                                rx_msg.data[6] == 0x01 &&
-                                rx_msg.data[7] == 0x00) {
-                                snprintf(last_rx_line, sizeof(last_rx_line),
-                                         "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
-                                         (unsigned long)rx_msg.identifier,
-                                         rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
-                                         rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
-                                last_rx_valid = true;
-                                step3_action2_ok = true;
-                                break;
-                            }
-                        }
-                        if (step3_action2_ok) break;
                     }
                 }
 
                 if (strcmp(action_key, "action2") == 0 && step_idx == 3) {
-                    ESP_LOGI(TAG, "[action2] Paso 4: esperando 62 19 23");
+                    /* Paso 6-8 protocolo: cierre rutina + lectura resultado + borrado DTCs */
+                    ESP_LOGI(TAG, "[action2] Paso 4: cierre rutina + lectura resultado + borrado DTCs");
                     drain_rx_queue();
                     last_rx_valid = false;
                     twai_message_t rx_msg;
 
-                    const uint8_t routine_02[8] = {0x04,0x31,0x02,0x04,0x16,0xFF,0xFF,0xFF};
-                    send_can_frame(SEED_REQUEST_ID, routine_02);
+                    /* --- Paso 6: cierre rutina (solo si se inició en paso 2) --- */
+                    if (action2_routine_started) {
+                        const uint8_t routine_stop[8] = {0x04,0x31,0x02,0x04,0x16,0xFF,0xFF,0xFF};
+                        send_can_frame(SEED_REQUEST_ID, routine_stop);
+                        for (int i = 0; i < 50; i++) {
+                            if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
+                            if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                                rx_msg.data[1] == 0x71 && rx_msg.data[2] == 0x02 &&
+                                rx_msg.data[3] == 0x04 && rx_msg.data[4] == 0x16) {
+                                break;
+                            }
+                        }
 
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code == 8 &&
-                            rx_msg.data[0] == 0x04 &&
-                            rx_msg.data[1] == 0x71 &&
-                            rx_msg.data[2] == 0x02 &&
-                            rx_msg.data[3] == 0x04 &&
-                            rx_msg.data[4] == 0x16) {
-                            break;
+                        const uint8_t routine_result[8] = {0x04,0x31,0x03,0x04,0x16,0xFF,0xFF,0xFF};
+                        send_can_frame(SEED_REQUEST_ID, routine_result);
+                        for (int i = 0; i < 50; i++) {
+                            if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
+                            if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                                rx_msg.data[1] == 0x71 && rx_msg.data[2] == 0x03 &&
+                                rx_msg.data[3] == 0x04 && rx_msg.data[4] == 0x16) {
+                                uint8_t result_code = rx_msg.data[5];
+                                ESP_LOGI(TAG, "[action2] Resultado rutina: 0x%02X (%s)",
+                                         result_code,
+                                         (result_code == 0x02 || result_code == 0x03) ? "OK" : "otro");
+                                break;
+                            }
                         }
                     }
 
-                    const uint8_t routine_03b[8] = {0x04,0x31,0x03,0x04,0x16,0xFF,0xFF,0xFF};
-                    send_can_frame(SEED_REQUEST_ID, routine_03b);
-
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code == 8 &&
-                            rx_msg.data[0] == 0x07 &&
-                            rx_msg.data[1] == 0x71 &&
-                            rx_msg.data[2] == 0x03 &&
-                            rx_msg.data[3] == 0x04 &&
-                            rx_msg.data[4] == 0x16 &&
-                            rx_msg.data[5] == 0x02) {
-                            break;
-                        }
-                    }
-
+                    /* --- Paso 7: lectura resultado DID 1923 (multiframe) --- */
                     const uint8_t read_1923[8] = {0x03,0x22,0x19,0x23,0xFF,0xFF,0xFF,0xFF};
                     send_can_frame(SEED_REQUEST_ID, read_1923);
 
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
+                    bool got_1923_ff = false;
+                    for (int i = 0; i < 50 && !got_1923_ff; i++) {
+                        if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
                         if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code == 8 &&
-                            rx_msg.data[0] == 0x10 &&
-                            rx_msg.data[1] == 0x09 &&
-                            rx_msg.data[2] == 0x62 &&
-                            rx_msg.data[3] == 0x19 &&
-                            rx_msg.data[4] == 0x23 &&
-                            rx_msg.data[5] == 0x01 &&
-                            rx_msg.data[6] == 0x00 &&
-                            rx_msg.data[7] == 0x28) {
-                            break;
+                            rx_msg.data[0] == 0x10 && rx_msg.data[2] == 0x62 &&
+                            rx_msg.data[3] == 0x19 && rx_msg.data[4] == 0x23) {
+                            got_1923_ff = true;
+                            snprintf(last_rx_line, sizeof(last_rx_line),
+                                     "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
+                                     (unsigned long)rx_msg.identifier,
+                                     rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
+                                     rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
+                            last_rx_valid = true;
                         }
                     }
 
-                    const uint8_t fc_1923[8] = {0x30,0x00,0x00,0xFF,0xFF,0xFF,0xFF,0xFF};
-                    send_can_frame(SEED_REQUEST_ID, fc_1923);
-
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code == 8 &&
-                            rx_msg.data[0] == 0x21 &&
-                            rx_msg.data[1] == 0x64 &&
-                            rx_msg.data[2] == 0xD7 &&
-                            rx_msg.data[3] == 0xE2) {
-                            break;
+                    if (got_1923_ff) {
+                        const uint8_t fc[8] = {0x30,0x00,0x00,0xFF,0xFF,0xFF,0xFF,0xFF};
+                        send_can_frame(SEED_REQUEST_ID, fc);
+                        for (int i = 0; i < 50; i++) {
+                            if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
+                            if (rx_msg.identifier == SEED_RESPONSE_ID && rx_msg.data[0] == 0x21) {
+                                ESP_LOGI(TAG, "[action2] DID 1923 CF: %02X %02X %02X",
+                                         rx_msg.data[1], rx_msg.data[2], rx_msg.data[3]);
+                                break;
+                            }
                         }
                     }
 
-                    const uint8_t clear_msg[8] = {0x04,0x14,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
-                    send_can_frame(SEED_REQUEST_ID, clear_msg);
+                    /* --- Paso 8: borrado DTCs --- */
+                    const uint8_t clear_dtc[8] = {0x04,0x14,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+                    send_can_frame(SEED_REQUEST_ID, clear_dtc);
 
                     bool got_dtc_ok = false;
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code >= 4 &&
-                            rx_msg.data[0] == 0x03 &&
-                            rx_msg.data[1] == 0x7F &&
-                            rx_msg.data[2] == 0x14 &&
-                            rx_msg.data[3] == 0x78) {
+                    for (int i = 0; i < 100; i++) {
+                        if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
+                        if (rx_msg.identifier != SEED_RESPONSE_ID) continue;
+                        if (rx_msg.data_length_code >= 4 &&
+                            rx_msg.data[0] == 0x03 && rx_msg.data[1] == 0x7F &&
+                            rx_msg.data[2] == 0x14 && rx_msg.data[3] == 0x78) {
                             continue;
                         }
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code >= 2 &&
-                            rx_msg.data[0] == 0x01 &&
-                            rx_msg.data[1] == 0x54) {
+                        if (rx_msg.data_length_code >= 2 &&
+                            rx_msg.data[0] == 0x01 && rx_msg.data[1] == 0x54) {
                             got_dtc_ok = true;
                             break;
                         }
                     }
 
                     if (got_dtc_ok) {
-                        snprintf(last_rx_line, sizeof(last_rx_line),
-                                 "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
-                                 (unsigned long)rx_msg.identifier,
-                                 rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
-                                 (rx_msg.data_length_code > 4 ? rx_msg.data[4] : 0x00),
-                                 (rx_msg.data_length_code > 5 ? rx_msg.data[5] : 0x00),
-                                 (rx_msg.data_length_code > 6 ? rx_msg.data[6] : 0x00),
-                                 (rx_msg.data_length_code > 7 ? rx_msg.data[7] : 0x00));
-                        last_rx_valid = true;
+                        ESP_LOGI(TAG, "[action2] DTCs borrados OK");
                         step4_action2_ok = true;
                     }
                 }
