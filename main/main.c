@@ -299,6 +299,29 @@ static uint32_t parse_can_id(cJSON *item) {
     return 0;
 }
 
+/** Respuesta positiva UDS a ClearDiagnosticInformation (0x14): 0x54 (ISO-TP SF 01 54 … u otras variantes). */
+static bool rx_is_clear_dtc_positive(const twai_message_t *m) {
+    if (!m || m->identifier != SEED_RESPONSE_ID || m->data_length_code < 1) {
+        return false;
+    }
+    const uint8_t *d = m->data;
+    uint8_t dlc = m->data_length_code;
+
+    if (dlc >= 2 && (d[0] & 0xF0) == 0x00) {
+        unsigned sf_len = (unsigned)(d[0] & 0x0F);
+        if (sf_len >= 1 && d[1] == 0x54) {
+            return true;
+        }
+    }
+    if (d[0] == 0x54) {
+        return true;
+    }
+    if (dlc >= 2 && d[0] == 0x02 && d[1] == 0x54) {
+        return true;
+    }
+    return false;
+}
+
 /* CAN Transmission Logic (returns true if access OK on action1/step0) */
 static bool transmit_can_step(const char *action_key, int step_idx) {
     bool access_ok = false;
@@ -804,17 +827,29 @@ step0_done:
                     const uint8_t clear_dtc[8] = {0x04,0x14,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
                     send_can_frame(SEED_REQUEST_ID, clear_dtc);
 
+                    /* Espera por tiempo: en un bus CAN con tráfico ajeno, un bucle de N recepciones
+                     * puede agotarse antes de ver el 01 54 aunque la ECU responda bien. */
                     bool got_dtc_ok = false;
-                    for (int i = 0; i < 100; i++) {
-                        if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
-                        if (rx_msg.identifier != SEED_RESPONSE_ID) continue;
+                    const int64_t dtc_deadline_us = esp_timer_get_time() + (int64_t)15 * 1000000;
+                    while (esp_timer_get_time() < dtc_deadline_us) {
+                        if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) {
+                            continue;
+                        }
+                        if (rx_msg.identifier != SEED_RESPONSE_ID) {
+                            continue;
+                        }
                         if (rx_msg.data_length_code >= 4 &&
                             rx_msg.data[0] == 0x03 && rx_msg.data[1] == 0x7F &&
                             rx_msg.data[2] == 0x14 && rx_msg.data[3] == 0x78) {
                             continue;
                         }
-                        if (rx_msg.data_length_code >= 2 &&
-                            rx_msg.data[0] == 0x01 && rx_msg.data[1] == 0x54) {
+                        if (rx_msg.data_length_code >= 4 &&
+                            rx_msg.data[0] == 0x03 && rx_msg.data[1] == 0x7F &&
+                            rx_msg.data[2] == 0x14) {
+                            ESP_LOGW(TAG, "[action2] Clear DTC NRC=0x%02X", rx_msg.data[3]);
+                            break;
+                        }
+                        if (rx_is_clear_dtc_positive(&rx_msg)) {
                             got_dtc_ok = true;
                             break;
                         }
