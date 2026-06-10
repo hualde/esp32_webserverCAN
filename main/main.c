@@ -34,8 +34,8 @@ extern const uint8_t logo_jpg_start[] asm("_binary_logo_jpg_start");
 extern const uint8_t logo_jpg_end[]   asm("_binary_logo_jpg_end");
 
 /* CAN Config */
-#define TX_GPIO_NUM 17   // GPIO para transmisión CAN
-#define RX_GPIO_NUM 16   // GPIO para recepción CAN
+#define TX_GPIO_NUM 18   // GPIO para transmisión CAN
+#define RX_GPIO_NUM 19   // GPIO para recepción CAN
 
 /* Global variables */
 static char current_lang[3] = "es";
