@@ -544,3 +544,87 @@ body.guide-body {
 .action2-help-bar {
     margin: 0 0 16px 0;
 }
+
+/* --- Feedback de flancos (action2) --- */
+#action2-feedback {
+    margin: 0 0 16px 0;
+}
+
+.flank-grid {
+    display: flex;
+    justify-content: space-around;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.flank-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.flank-auth {
+    justify-content: center;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.flank-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #9aa0a6;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+    flex: 0 0 auto;
+}
+
+.flank-dot.on {
+    background: #2ecc71;
+    box-shadow: 0 0 8px 1px rgba(46, 204, 113, 0.7);
+}
+
+.torque-box {
+    margin-top: 12px;
+}
+
+.torque-box.hidden,
+.flank-grid.hidden {
+    display: none;
+}
+
+.torque-value {
+    text-align: center;
+    font-size: 2.2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    margin-bottom: 6px;
+}
+
+.torque-value.reached {
+    color: #2ecc71;
+}
+
+.flank-spinner {
+    width: 22px;
+    height: 22px;
+    margin: 14px auto 2px auto;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: var(--secondary-color, #4da3ff);
+    border-radius: 50%;
+    animation: flank-spin 0.8s linear infinite;
+}
+
+.flank-spinner.hidden {
+    display: none;
+}
+
+@keyframes flank-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

@@ -83,56 +83,46 @@
         "steps": [
             {
                 "description": {
-                    "es": "Paso 1: Sesión y desbloqueo de seguridad",
-                    "en": "Step 1: Session and security unlock",
-                    "fr": "Étape 1 : Session et déverrouillage sécurité",
-                    "de": "Schritt 1: Sitzung und Sicherheitsfreigabe"
-                },
-                "frames": [
-                    {
-                        "id": "712",
-                        "data": ["0x02", "0x3E", "0x00", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF"],
-                        "dlc": 8,
-                        "delay_ms": 50
-                    },
-                    {
-                        "id": "712",
-                        "data": ["0x02", "0x10", "0x03", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF"],
-                        "dlc": 8,
-                        "delay_ms": 50
-                    },
-                    {
-                        "id": "712",
-                        "data": ["0x02", "0x27", "0x03", "0xFF", "0xFF", "0xFF", "0xFF", "0xFF"],
-                        "dlc": 8,
-                        "delay_ms": 50
-                    }
-                ]
-            },
-            {
-                "description": {
-                    "es": "Paso 2: Lectura de estado inicial e inicio de rutina de ajuste",
-                    "en": "Step 2: Read initial state and start adjustment routine",
-                    "fr": "Étape 2 : Lecture de l'état initial et démarrage de la routine d'ajustement",
-                    "de": "Schritt 2: Anfangsstatus lesen und Einstellroutine starten"
+                    "es": "Paso 1: Dé el contacto (motor parado) y pulse «Ejecutar Paso». La conexión con la dirección es automática.",
+                    "en": "Step 1: Switch the ignition on (engine off) and press “Execute step”. Connection to the steering unit is automatic.",
+                    "fr": "Étape 1 : Mettez le contact (moteur arrêté) et appuyez sur « Exécuter l'étape ». La connexion à la direction est automatique.",
+                    "de": "Schritt 1: Zündung einschalten (Motor aus) und „Schritt ausführen“ drücken. Die Verbindung zur Lenkung erfolgt automatisch."
                 },
                 "frames": []
             },
             {
                 "description": {
-                    "es": "Paso 3: Gire el volante a tope a un lado (unos 3 s), luego al contrario (unos 3 s) y centre el volante. El equipo consulta el estado por CAN de forma continua hasta detectar el fin; en este paso solo pulse «Ejecutar Paso» una vez y espere a que avance solo al siguiente.",
-                    "en": "Step 3: Turn the wheel fully to one side (~3 s), then the other (~3 s), and centre it. The device polls the status over CAN until finished; press “Execute step” only once here and wait for it to advance automatically.",
-                    "fr": "Étape 3 : Tournez le volant en butée d'un côté (~3 s), puis de l'autre (~3 s), et centrez-le. L'appareil interroge l'état sur le CAN jusqu'à la fin ; n'appuyez sur « Exécuter l'étape » qu'une fois et attendez le passage automatique.",
-                    "de": "Schritt 3: Lenkrad ganz zu einer Seite (~3 s), dann zur anderen (~3 s) und mittig stellen. Das Gerät liest den Status per CAN bis zum Ende; in diesem Schritt nur einmal „Schritt ausführen“ drücken und warten, bis automatisch weitergeht."
+                    "es": "Paso 2: Pulse «Ejecutar Paso» y gire el volante despacio: tope izquierdo, tope derecho y centro. Repita el recorrido hasta que los 5 indicadores estén en verde. Avanza solo.",
+                    "en": "Step 2: Press “Execute step” and slowly turn the wheel: full left, full right, then centre. Repeat the sweep until all 5 indicators are green. It advances automatically.",
+                    "fr": "Étape 2 : Appuyez sur « Exécuter l'étape » et tournez lentement le volant : butée gauche, butée droite, puis centre. Répétez jusqu'à ce que les 5 indicateurs soient verts. L'avancement est automatique.",
+                    "de": "Schritt 2: „Schritt ausführen“ drücken und das Lenkrad langsam drehen: Anschlag links, Anschlag rechts, dann Mitte. Wiederholen, bis alle 5 Anzeigen grün sind. Es geht automatisch weiter."
                 },
                 "frames": []
             },
             {
                 "description": {
-                    "es": "Paso 4: Verificación, cierre de rutina y borrado de errores",
-                    "en": "Step 4: Verification, routine close and fault clearing",
-                    "fr": "Étape 4 : Vérification, clôture de routine et effacement des défauts",
-                    "de": "Schritt 4: Prüfung, Routine-Abschluss und Fehlerlöschung"
+                    "es": "Paso 3: Centre el volante y pulse «Ejecutar Paso». Después gire a cada tope y APRIETE FUERTE hasta superar 7,5 Nm en pantalla. Cuando los dos topes estén en verde, avanza solo.",
+                    "en": "Step 3: Centre the wheel and press “Execute step”. Then turn to each stop and PUSH HARD until the screen shows more than 7.5 Nm. Once both stops are green, it advances automatically.",
+                    "fr": "Étape 3 : Centrez le volant et appuyez sur « Exécuter l'étape ». Tournez ensuite jusqu'à chaque butée et APPUYEZ FORT jusqu'à dépasser 7,5 Nm à l'écran. Quand les deux butées sont vertes, l'avancement est automatique.",
+                    "de": "Schritt 3: Lenkrad mittig stellen und „Schritt ausführen“ drücken. Danach bis zu jedem Anschlag drehen und KRÄFTIG DRÜCKEN, bis am Bildschirm mehr als 7,5 Nm angezeigt werden. Sind beide Anschläge grün, geht es automatisch weiter."
+                },
+                "frames": []
+            },
+            {
+                "description": {
+                    "es": "Paso 4: Vuelva el volante al centro y pulse «Ejecutar Paso» para guardar la calibración.",
+                    "en": "Step 4: Return the wheel to centre and press “Execute step” to save the calibration.",
+                    "fr": "Étape 4 : Remettez le volant au centre et appuyez sur « Exécuter l'étape » pour enregistrer le calibrage.",
+                    "de": "Schritt 4: Lenkrad in die Mitte zurückstellen und „Schritt ausführen“ drücken, um die Kalibrierung zu speichern."
+                },
+                "frames": []
+            },
+            {
+                "description": {
+                    "es": "Paso 5: Quite el contacto, espere 5 segundos y vuelva a darlo. Después pulse «Ejecutar Paso» para borrar las averías.",
+                    "en": "Step 5: Switch the ignition off, wait 5 seconds and switch it back on. Then press “Execute step” to clear the faults.",
+                    "fr": "Étape 5 : Coupez le contact, attendez 5 secondes et remettez-le. Appuyez ensuite sur « Exécuter l'étape » pour effacer les défauts.",
+                    "de": "Schritt 5: Zündung ausschalten, 5 Sekunden warten und wieder einschalten. Danach „Schritt ausführen“ drücken, um die Fehler zu löschen."
                 },
                 "frames": []
             }

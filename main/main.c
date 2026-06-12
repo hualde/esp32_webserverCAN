@@ -3,6 +3,9 @@
 #include <string.h>
 #include <stdbool.h>
 #include <inttypes.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "esp_timer.h"
 #include "esp_log.h"
 #include "esp_http_server.h"
@@ -50,6 +53,37 @@ static bool action2_routine_started = false;
 #define SEED_RESPONSE_ID 0x77C
 #define SEED_ADDEND 0x4B31u
 
+/* Tester Present continuo (UDS) para la calibracion de topes (action2):
+ * trama 02 3E 80 ... enviada en CAN ID 0x700 cada 500 ms. La subfuncion 0x80
+ * indica "sin respuesta". Debe mantenerse ininterrumpido durante todo el proceso
+ * (salvo el KEY OFF del ciclo de encendido), o la ECU sale de sesion (>2 s). */
+#define TESTER_PRESENT_ID 0x700
+static volatile bool tester_present_active = false;
+
+/* --- Ejecución asíncrona + estado en vivo de action2 (feedback de flancos) ---
+ * Los pasos de action2 pueden tardar (acción humana). Para no bloquear el servidor
+ * web y poder mostrar progreso en pantalla, se ejecutan en una tarea de fondo y la
+ * web consulta /api/step_status periódicamente. */
+static SemaphoreHandle_t a2_start_sem = NULL;
+static char a2_req_action[16] = {0};
+static volatile int  a2_req_step = -1;
+static volatile bool a2_worker_busy = false;
+static volatile bool a2_worker_done = false;
+static volatile bool a2_worker_success = false;
+
+static volatile bool    a2_flank_valid = false;   /* hay lectura de 181B */
+static volatile uint8_t a2_flank_b0 = 0;
+static volatile uint8_t a2_flank_b1 = 0;
+static volatile uint8_t a2_flank_b2 = 0;
+static volatile uint8_t a2_flank_b3 = 0;
+static volatile uint8_t a2_flank_b4 = 0;
+static volatile bool    a2_auth_valid = false;     /* hay lectura de 1816 */
+static volatile uint8_t a2_auth_a0 = 0xFF;
+static volatile bool    a2_torque_valid = false;   /* hay lectura de par (DID 1805) */
+static volatile int16_t a2_torque_mnm = 0;         /* par actual en mNm (signo = sentido) */
+static volatile bool    a2_stop_pos_ok = false;    /* tope alcanzado en sentido + (>= +7500 mNm) */
+static volatile bool    a2_stop_neg_ok = false;    /* tope alcanzado en sentido - (<= -7500 mNm) */
+
 static void send_key_response(uint32_t key);
 
 static bool send_can_frame(uint32_t id, const uint8_t data[8]) {
@@ -67,6 +101,32 @@ static bool send_can_frame(uint32_t id, const uint8_t data[8]) {
     }
     ESP_LOGE(TAG, "  !! Failed to transmit CAN frame 0x%03" PRIX32, id);
     return false;
+}
+
+/* Envia Flow Control (30 00 00 ...) en 0x712 ante un First Frame (0x1X) recibido. */
+static void send_flow_control(void) {
+    const uint8_t fc[8] = {0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    send_can_frame(SEED_REQUEST_ID, fc);
+}
+
+/* Tarea de Tester Present: mientras tester_present_active sea true, envia
+ * 02 3E 80 ... en 0x700 cada 500 ms. La ECU no responde (subfuncion 0x80). */
+static void tester_present_task(void *arg) {
+    (void)arg;
+    const uint8_t tp[8] = {0x02, 0x3E, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00};
+    for (;;) {
+        if (tester_present_active) {
+            twai_message_t message;
+            memset(&message, 0, sizeof(message));
+            message.identifier = TESTER_PRESENT_ID;
+            message.extd = 0;
+            message.rtr = 0;
+            message.data_length_code = 8;
+            memcpy(message.data, tp, 8);
+            twai_transmit(&message, pdMS_TO_TICKS(50));
+        }
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
 }
 
 static bool wait_for_access_ok(void) {
@@ -325,9 +385,7 @@ static bool rx_is_clear_dtc_positive(const twai_message_t *m) {
 /* CAN Transmission Logic (returns true if access OK on action1/step0) */
 static bool transmit_can_step(const char *action_key, int step_idx) {
     bool access_ok = false;
-    bool step2_action2_ok = false;
-    bool step3_action2_ok = false;
-    bool step4_action2_ok = false;
+    bool action2_step_ok = false;
     bool step_action1_ok = false;
     const char *json_data = (const char *)can_frames_json_start;
     cJSON *root = cJSON_ParseWithLength(json_data, can_frames_json_end - can_frames_json_start);
@@ -347,16 +405,12 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                 int frames_count = cJSON_GetArraySize(frames_array);
                 ESP_LOGI(TAG, "Ejecutando %s - Paso %d (%d tramas)", action_key, step_idx + 1, frames_count);
                 
-                if (strcmp(action_key, "action2") == 0 && step_idx == 0) {
-                    // Evita borrar respuestas válidas que lleguen justo tras el 27 03
-                    drain_rx_queue();
-                }
-
                 bool seed_request_tx_ok = false;
-                /* Paso 2 acción 1: la trama 07 2E 06 00 XX 1F 00 00 se envía más abajo con el byte XX del query */
+                /* Paso 2 acción 1: la trama 07 2E 06 00 XX 1F 00 00 se envía más abajo con el byte XX del query.
+                 * action2 maneja todas sus tramas de forma explícita en sus propios bloques. */
                 bool skip_auto_send =
                     (strcmp(action_key, "action1") == 0 && (step_idx == 0 || step_idx == 1 || step_idx == 2 || step_idx == 3 || step_idx == 4)) ||
-                    (strcmp(action_key, "action2") == 0 && (step_idx == 1 || step_idx == 2 || step_idx == 3));
+                    (strcmp(action_key, "action2") == 0);
 
                 if (!skip_auto_send) {
                     for (int i = 0; i < frames_count; i++) {
@@ -401,9 +455,9 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                     }
                 }
 
-                if ((strcmp(action_key, "action1") == 0 || strcmp(action_key, "action2") == 0) &&
+                if (strcmp(action_key, "action1") == 0 &&
                     step_idx == 0) {
-                    // Acción 1/2 paso 1: SecurityAccess. Reglas críticas:
+                    // Acción 1 paso 1: SecurityAccess. Reglas críticas:
                     // - NO enviar 04 14 aquí
                     // - TX -> esperar RX antes del siguiente TX
                     drain_rx_queue();
@@ -590,258 +644,339 @@ step0_done:
                     }
                 }
 
-                if (strcmp(action_key, "action2") == 0 && step_idx == 1) {
-                    /* Paso 2 protocolo: lectura 181B + Paso 3 protocolo: inicio rutina */
-                    ESP_LOGI(TAG, "[action2] Paso 2: lectura estado inicial 181B + inicio rutina");
+                /* ============================================================
+                 * ACTION2 — Calibración de topes de dirección EPS (UDS sobre CAN)
+                 * Tester Present 02 3E 80 ... en 0x700 cada 500 ms (tarea de fondo)
+                 * activo desde el paso 1 hasta el final (salvo el KEY OFF del ciclo).
+                 * ============================================================ */
+
+                /* --- Paso 1-3: sesión extendida + Security Access (seed/key) --- */
+                if (strcmp(action_key, "action2") == 0 && step_idx == 0) {
+                    ESP_LOGI(TAG, "[action2] Paso 1-3: sesion extendida + security access");
+                    tester_present_active = true;   /* arranca Tester Present 0x700 */
+                    vTaskDelay(pdMS_TO_TICKS(50));
                     drain_rx_queue();
                     last_rx_valid = false;
-                    action2_routine_started = false;
-                    twai_message_t rx_msg;
 
-                    /* --- Lectura DID 181B (multiframe) --- */
-                    const uint8_t read_181b[8] = {0x03,0x22,0x18,0x1B,0xFF,0xFF,0xFF,0xFF};
-                    send_can_frame(SEED_REQUEST_ID, read_181b);
+                    const uint8_t diag_session[8] = {0x02,0x10,0x03,0x00,0x00,0x00,0x00,0x00};
+                    const uint8_t seed_req[8]     = {0x02,0x27,0x03,0x00,0x00,0x00,0x00,0x00};
 
-                    bool got_ff = false;
-                    for (int i = 0; i < 50 && !got_ff; i++) {
-                        if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data[0] == 0x10 && rx_msg.data[2] == 0x62 &&
-                            rx_msg.data[3] == 0x18 && rx_msg.data[4] == 0x1B) {
-                            got_ff = true;
-                        }
-                    }
+                    /* Paso 1: 10 03 -> 50 03 */
+                    if (!send_can_frame(SEED_REQUEST_ID, diag_session)) goto a2_step0_done;
+                    if (!uds_wait_with_pending(0x10, match_50_1003, NULL, 2000, 5000)) goto a2_step0_done;
 
-                    if (got_ff) {
-                        const uint8_t fc[8] = {0x30,0x00,0x00,0xFF,0xFF,0xFF,0xFF,0xFF};
-                        send_can_frame(SEED_REQUEST_ID, fc);
-                        for (int i = 0; i < 50; i++) {
-                            if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
-                            if (rx_msg.identifier == SEED_RESPONSE_ID && rx_msg.data[0] == 0x21) {
-                                ESP_LOGI(TAG, "[action2] Estado inicial 181B leido");
-                                break;
-                            }
-                        }
-                    }
+                    /* Paso 2: 27 03 -> 67 03 [SEED] */
+                    if (!send_can_frame(SEED_REQUEST_ID, seed_req)) goto a2_step0_done;
+                    seed_ctx_t sctx = {.seed = 0, .got_seed = false};
+                    if (!uds_wait_with_pending(0x27, match_67_seed, &sctx, 2000, 5000) || !sctx.got_seed) goto a2_step0_done;
 
-                    /* --- Inicio rutina 31 01 04 16 (puede fallar si la ECU no la soporta) --- */
-                    const uint8_t routine_start[8] = {0x04,0x31,0x01,0x04,0x16,0xFF,0xFF,0xFF};
-                    send_can_frame(SEED_REQUEST_ID, routine_start);
+                    /* Paso 3: KEY = SEED + 0x4B31 (mantiene los 2 bytes altos) -> 67 04 */
+                    uint32_t key = sctx.seed + SEED_ADDEND;
+                    ESP_LOGI(TAG, "[action2] Seed 0x%08lX -> Key 0x%08lX",
+                             (unsigned long)sctx.seed, (unsigned long)key);
+                    twai_message_t key_msg;
+                    memset(&key_msg, 0, sizeof(key_msg));
+                    key_msg.identifier = SEED_REQUEST_ID;
+                    key_msg.extd = 0;
+                    key_msg.rtr = 0;
+                    key_msg.data_length_code = 8;
+                    key_msg.data[0] = 0x06;
+                    key_msg.data[1] = 0x27;
+                    key_msg.data[2] = 0x04;
+                    key_msg.data[3] = (uint8_t)((key >> 24) & 0xFF);
+                    key_msg.data[4] = (uint8_t)((key >> 16) & 0xFF);
+                    key_msg.data[5] = (uint8_t)((key >> 8) & 0xFF);
+                    key_msg.data[6] = (uint8_t)(key & 0xFF);
+                    key_msg.data[7] = 0xFF;
+                    if (twai_transmit(&key_msg, pdMS_TO_TICKS(100)) != ESP_OK) goto a2_step0_done;
+                    if (!uds_wait_with_pending(0x27, match_67_access_ok, NULL, 2000, 5000)) goto a2_step0_done;
 
-                    bool routine_accepted = false;
-                    for (int i = 0; i < 50; i++) {
-                        if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
-                        if (rx_msg.identifier != SEED_RESPONSE_ID) continue;
-                        if (rx_msg.data[0] == 0x04 && rx_msg.data[1] == 0x71 &&
-                            rx_msg.data[2] == 0x01 && rx_msg.data[3] == 0x04 &&
-                            rx_msg.data[4] == 0x16) {
-                            routine_accepted = true;
-                            break;
-                        }
-                        if (rx_msg.data[1] == 0x7F && rx_msg.data[2] == 0x31) {
-                            ESP_LOGI(TAG, "[action2] ECU no soporta rutina (NRC=0x%02X), continuando", rx_msg.data[3]);
-                            break;
-                        }
-                    }
-                    action2_routine_started = routine_accepted;
-
-                    if (routine_accepted) {
-                        const uint8_t routine_status[8] = {0x04,0x31,0x03,0x04,0x16,0xFF,0xFF,0xFF};
-                        send_can_frame(SEED_REQUEST_ID, routine_status);
-                        for (int i = 0; i < 50; i++) {
-                            if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
-                            if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                                rx_msg.data[1] == 0x71 && rx_msg.data[2] == 0x03 &&
-                                rx_msg.data[3] == 0x04 && rx_msg.data[4] == 0x16) {
-                                snprintf(last_rx_line, sizeof(last_rx_line),
-                                         "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
-                                         (unsigned long)rx_msg.identifier,
-                                         rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
-                                         rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
-                                last_rx_valid = true;
-                                break;
-                            }
-                        }
-                    }
-                    step2_action2_ok = true;
+                    access_ok = true;
+a2_step0_done:
+                    ;
                 }
 
-                if (strcmp(action_key, "action2") == 0 && step_idx == 2) {
-                    /* Paso 4 protocolo: polling 181B (multiframe) + Paso 5: verificación 1816 */
-                    ESP_LOGI(TAG, "[action2] Paso 3: polling 181B cada 400ms");
+                /* --- Paso 4: reconocimiento de flancos (DID 181B) hasta 01 01 01 01 01 --- */
+                if (strcmp(action_key, "action2") == 0 && step_idx == 1) {
+                    ESP_LOGI(TAG, "[action2] Paso 4: reconocimiento de flancos (DID 181B)");
                     drain_rx_queue();
                     last_rx_valid = false;
                     twai_message_t rx_msg;
 
-                    uint8_t prev_did[5] = {0xFF,0xFF,0xFF,0xFF,0xFF};
-                    int stable_count = 0;
-                    bool calibration_done = false;
+                    bool flanks_ok = false;
+                    const int64_t deadline_us = esp_timer_get_time() + (int64_t)120 * 1000000;
 
-                    for (;;) {
-                        const uint8_t read_181b[8] = {0x03,0x22,0x18,0x1B,0xFF,0xFF,0xFF,0xFF};
+                    while (esp_timer_get_time() < deadline_us && !flanks_ok) {
+                        const uint8_t read_181b[8] = {0x03,0x22,0x18,0x1B,0x00,0x00,0x00,0x00};
                         if (!send_can_frame(SEED_REQUEST_ID, read_181b)) {
-                            vTaskDelay(pdMS_TO_TICKS(400));
+                            vTaskDelay(pdMS_TO_TICKS(450));
                             continue;
                         }
 
-                        /* Esperar first frame: 10 08 62 18 1B XX XX XX */
-                        uint8_t did_bytes[5] = {0};
+                        /* La respuesta 62 18 1B lleva 5 bytes de flancos repartidos en
+                         * First Frame (10 08 62 18 1B B0 B1 B2) y Consecutive Frame
+                         * (21 B3 B4). Hace falta que LOS 5 lleguen a 01: en trazas reales
+                         * una calibración con solo los 3 primeros a 01 fue rechazada por
+                         * la EPS (1816 != 00 y DTC 003F0A persistente). */
+                        uint8_t b[5] = {0xFF,0xFF,0xFF,0xFF,0xFF};
                         bool got_ff = false;
                         for (int i = 0; i < 20 && !got_ff; i++) {
                             if (twai_receive(&rx_msg, pdMS_TO_TICKS(100)) != ESP_OK) continue;
                             if (rx_msg.identifier == SEED_RESPONSE_ID &&
                                 rx_msg.data[0] == 0x10 && rx_msg.data[2] == 0x62 &&
                                 rx_msg.data[3] == 0x18 && rx_msg.data[4] == 0x1B) {
-                                did_bytes[0] = rx_msg.data[5];
-                                did_bytes[1] = rx_msg.data[6];
-                                did_bytes[2] = rx_msg.data[7];
+                                b[0] = rx_msg.data[5];
+                                b[1] = rx_msg.data[6];
+                                b[2] = rx_msg.data[7];
                                 got_ff = true;
                             }
                         }
 
                         if (got_ff) {
-                            const uint8_t fc[8] = {0x30,0x00,0x00,0xFF,0xFF,0xFF,0xFF,0xFF};
-                            send_can_frame(SEED_REQUEST_ID, fc);
-                            for (int i = 0; i < 20; i++) {
+                            send_flow_control();
+                            bool got_cf = false;
+                            for (int i = 0; i < 20 && !got_cf; i++) {
                                 if (twai_receive(&rx_msg, pdMS_TO_TICKS(100)) != ESP_OK) continue;
                                 if (rx_msg.identifier == SEED_RESPONSE_ID && rx_msg.data[0] == 0x21) {
-                                    did_bytes[3] = rx_msg.data[1];
-                                    did_bytes[4] = rx_msg.data[2];
-                                    break;
+                                    b[3] = rx_msg.data[1];
+                                    b[4] = rx_msg.data[2];
+                                    got_cf = true;
                                 }
                             }
-
-                            ESP_LOGI(TAG, "[action2] 181B: %02X %02X %02X %02X %02X",
-                                     did_bytes[0], did_bytes[1], did_bytes[2], did_bytes[3], did_bytes[4]);
-
-                            if (did_bytes[0] == 0x01 && did_bytes[1] == 0x01 &&
-                                did_bytes[2] == 0x01 && did_bytes[3] == 0x01 &&
-                                did_bytes[4] == 0x01) {
-                                calibration_done = true;
-                            }
-
-                            if (memcmp(did_bytes, prev_did, 5) == 0) {
-                                stable_count++;
-                                if (stable_count >= 10) calibration_done = true;
-                            } else {
-                                stable_count = 0;
-                                memcpy(prev_did, did_bytes, 5);
+                            ESP_LOGI(TAG, "[action2] 181B flancos B0..B4: %02X %02X %02X %02X %02X",
+                                     b[0], b[1], b[2], b[3], b[4]);
+                            /* Publica el estado en vivo para el feedback de pantalla */
+                            a2_flank_b0 = b[0];
+                            a2_flank_b1 = b[1];
+                            a2_flank_b2 = b[2];
+                            a2_flank_b3 = b[3];
+                            a2_flank_b4 = b[4];
+                            a2_flank_valid = true;
+                            if (got_cf &&
+                                b[0] == 0x01 && b[1] == 0x01 && b[2] == 0x01 &&
+                                b[3] == 0x01 && b[4] == 0x01) {
+                                snprintf(last_rx_line, sizeof(last_rx_line),
+                                         "%08lX,false,Rx,0,8,62,18,1B,%02X,%02X,%02X,%02X,",
+                                         (unsigned long)SEED_RESPONSE_ID, b[0], b[1], b[2], b[3]);
+                                last_rx_valid = true;
+                                flanks_ok = true;
                             }
                         }
 
-                        if (calibration_done) break;
-                        vTaskDelay(pdMS_TO_TICKS(400));
+                        if (!flanks_ok) vTaskDelay(pdMS_TO_TICKS(450));
                     }
 
-                    /* Paso 5 protocolo: verificación estado DID 1816 */
-                    ESP_LOGI(TAG, "[action2] Verificacion 1816");
-                    const uint8_t read_1816[8] = {0x03,0x22,0x18,0x16,0xFF,0xFF,0xFF,0xFF};
-                    send_can_frame(SEED_REQUEST_ID, read_1816);
+                    action2_step_ok = flanks_ok;
+                }
+
+                /* --- Paso 6: iniciar rutina 31 01 04 16 + leer resultado 31 03 hasta RR==01 --- */
+                if (strcmp(action_key, "action2") == 0 && step_idx == 2) {
+                    ESP_LOGI(TAG, "[action2] Paso 6: iniciar rutina de calibracion (0416)");
+                    drain_rx_queue();
+                    last_rx_valid = false;
+                    action2_routine_started = false;
+                    twai_message_t rx_msg;
+
+                    const uint8_t routine_start[8] = {0x04,0x31,0x01,0x04,0x16,0x00,0x00,0x00};
+                    send_can_frame(SEED_REQUEST_ID, routine_start);
+
+                    bool started = false;
                     for (int i = 0; i < 50; i++) {
                         if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data[0] == 0x07 && rx_msg.data[1] == 0x62 &&
-                            rx_msg.data[2] == 0x18 && rx_msg.data[3] == 0x16) {
-                            snprintf(last_rx_line, sizeof(last_rx_line),
-                                     "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
-                                     (unsigned long)rx_msg.identifier,
-                                     rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
-                                     rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
-                            last_rx_valid = true;
-                            step3_action2_ok = true;
+                        if (rx_msg.identifier != SEED_RESPONSE_ID) continue;
+                        if (rx_msg.data[1] == 0x71 && rx_msg.data[2] == 0x01 &&
+                            rx_msg.data[3] == 0x04 && rx_msg.data[4] == 0x16) {
+                            started = true;
+                            break;
+                        }
+                        if (rx_msg.data[1] == 0x7F && rx_msg.data[2] == 0x31) {
+                            if (rx_msg.data[3] == 0x78) continue;   /* responsePending */
+                            ESP_LOGW(TAG, "[action2] StartRoutine NRC=0x%02X", rx_msg.data[3]);
                             break;
                         }
                     }
+                    action2_routine_started = started;
+
+                    /* Confirmar rutina en marcha: 31 03 hasta RR==01 (aunque el start
+                     * devuelva NRC por estar ya activa, p. ej. en un reintento). */
+                    bool captured = false;
+                    {
+                        const int64_t deadline_us = esp_timer_get_time() + (int64_t)15 * 1000000;
+                        while (esp_timer_get_time() < deadline_us && !captured) {
+                            const uint8_t routine_res[8] = {0x04,0x31,0x03,0x04,0x16,0x00,0x00,0x00};
+                            send_can_frame(SEED_REQUEST_ID, routine_res);
+                            for (int i = 0; i < 10; i++) {
+                                if (twai_receive(&rx_msg, pdMS_TO_TICKS(100)) != ESP_OK) continue;
+                                if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                                    rx_msg.data[1] == 0x71 && rx_msg.data[2] == 0x03 &&
+                                    rx_msg.data[3] == 0x04 && rx_msg.data[4] == 0x16) {
+                                    uint8_t rr = rx_msg.data[5];
+                                    ESP_LOGI(TAG, "[action2] 31 03 RR=0x%02X (espera 0x01)", rr);
+                                    if (rr == 0x01) {
+                                        snprintf(last_rx_line, sizeof(last_rx_line),
+                                                 "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
+                                                 (unsigned long)rx_msg.identifier,
+                                                 rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
+                                                 rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
+                                        last_rx_valid = true;
+                                        captured = true;
+                                    }
+                                    break;
+                                }
+                            }
+                            if (!captured) vTaskDelay(pdMS_TO_TICKS(400));
+                        }
+                    }
+
+                    if (captured) {
+                        /* Acción humana: apretar contra cada tope con más de 7,5 Nm.
+                         * Se monitoriza el par del sensor de torsión (DID 1805, mNm con
+                         * signo) y se publica en vivo para la pantalla. El paso termina
+                         * cuando se alcanzan +7500 y -7500 mNm (ambos topes). */
+                        bool both_stops = false;
+                        const int64_t tq_deadline_us = esp_timer_get_time() + (int64_t)180 * 1000000;
+                        while (esp_timer_get_time() < tq_deadline_us && !both_stops) {
+                            const uint8_t read_1805[8] = {0x03,0x22,0x18,0x05,0x00,0x00,0x00,0x00};
+                            if (send_can_frame(SEED_REQUEST_ID, read_1805)) {
+                                for (int i = 0; i < 10; i++) {
+                                    if (twai_receive(&rx_msg, pdMS_TO_TICKS(100)) != ESP_OK) continue;
+                                    if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                                        rx_msg.data[0] == 0x06 && rx_msg.data[1] == 0x62 &&
+                                        rx_msg.data[2] == 0x18 && rx_msg.data[3] == 0x05) {
+                                        int16_t tq = (int16_t)(((uint16_t)rx_msg.data[4] << 8) | rx_msg.data[5]);
+                                        a2_torque_mnm = tq;
+                                        a2_torque_valid = true;
+                                        if (tq >= 7500)  a2_stop_pos_ok = true;
+                                        if (tq <= -7500) a2_stop_neg_ok = true;
+                                        ESP_LOGI(TAG, "[action2] 1805 par=%d mNm (+ok=%d -ok=%d)",
+                                                 (int)tq, (int)a2_stop_pos_ok, (int)a2_stop_neg_ok);
+                                        break;
+                                    }
+                                }
+                            }
+                            both_stops = a2_stop_pos_ok && a2_stop_neg_ok;
+                            if (!both_stops) vTaskDelay(pdMS_TO_TICKS(300));
+                        }
+                        action2_step_ok = both_stops;
+                    }
                 }
 
+                /* --- Pasos 8-9: barrido + validar (31 02 04 16) -> RR==02 -> confirmar 1816 A0==00 ---
+                 * En las capturas reales el DID 1816 mantiene A0=0xFF durante toda la fase entre
+                 * StartRoutine y StopRoutine; A0 solo pasa a 0x00 DESPUÉS del StopRoutine. Por eso
+                 * la confirmación de "Autorizado" se hace aquí, tras validar la rutina. */
                 if (strcmp(action_key, "action2") == 0 && step_idx == 3) {
-                    /* Paso 6-8 protocolo: cierre rutina + lectura resultado + borrado DTCs */
-                    ESP_LOGI(TAG, "[action2] Paso 4: cierre rutina + lectura resultado + borrado DTCs");
+                    ESP_LOGI(TAG, "[action2] Paso 9: validar adaptacion (StopRoutine 0416) + confirmar 1816");
                     drain_rx_queue();
                     last_rx_valid = false;
                     twai_message_t rx_msg;
 
-                    /* --- Paso 6: cierre rutina (solo si se inició en paso 2) --- */
-                    if (action2_routine_started) {
-                        const uint8_t routine_stop[8] = {0x04,0x31,0x02,0x04,0x16,0xFF,0xFF,0xFF};
-                        send_can_frame(SEED_REQUEST_ID, routine_stop);
-                        for (int i = 0; i < 50; i++) {
-                            if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
-                            if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                                rx_msg.data[1] == 0x71 && rx_msg.data[2] == 0x02 &&
-                                rx_msg.data[3] == 0x04 && rx_msg.data[4] == 0x16) {
-                                break;
-                            }
+                    const uint8_t routine_stop[8] = {0x04,0x31,0x02,0x04,0x16,0x00,0x00,0x00};
+                    send_can_frame(SEED_REQUEST_ID, routine_stop);
+                    for (int i = 0; i < 50; i++) {
+                        if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data[1] == 0x71 && rx_msg.data[2] == 0x02 &&
+                            rx_msg.data[3] == 0x04 && rx_msg.data[4] == 0x16) {
+                            break;
                         }
+                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                            rx_msg.data[1] == 0x7F && rx_msg.data[2] == 0x31 &&
+                            rx_msg.data[3] != 0x78) {
+                            ESP_LOGW(TAG, "[action2] StopRoutine NRC=0x%02X", rx_msg.data[3]);
+                            break;
+                        }
+                    }
 
-                        const uint8_t routine_result[8] = {0x04,0x31,0x03,0x04,0x16,0xFF,0xFF,0xFF};
-                        send_can_frame(SEED_REQUEST_ID, routine_result);
-                        for (int i = 0; i < 50; i++) {
-                            if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
+                    /* Leer resultado final: 31 03 hasta RR==02 (timeout 30 s) */
+                    bool validated = false;
+                    const int64_t deadline_us = esp_timer_get_time() + (int64_t)30 * 1000000;
+                    while (esp_timer_get_time() < deadline_us && !validated) {
+                        const uint8_t routine_res[8] = {0x04,0x31,0x03,0x04,0x16,0x00,0x00,0x00};
+                        send_can_frame(SEED_REQUEST_ID, routine_res);
+                        for (int i = 0; i < 10; i++) {
+                            if (twai_receive(&rx_msg, pdMS_TO_TICKS(100)) != ESP_OK) continue;
                             if (rx_msg.identifier == SEED_RESPONSE_ID &&
                                 rx_msg.data[1] == 0x71 && rx_msg.data[2] == 0x03 &&
                                 rx_msg.data[3] == 0x04 && rx_msg.data[4] == 0x16) {
-                                uint8_t result_code = rx_msg.data[5];
-                                ESP_LOGI(TAG, "[action2] Resultado rutina: 0x%02X (%s)",
-                                         result_code,
-                                         (result_code == 0x02 || result_code == 0x03) ? "OK" : "otro");
+                                uint8_t rr = rx_msg.data[5];
+                                ESP_LOGI(TAG, "[action2] 31 03 final RR=0x%02X (espera 0x02)", rr);
+                                if (rr == 0x02) {
+                                    snprintf(last_rx_line, sizeof(last_rx_line),
+                                             "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
+                                             (unsigned long)rx_msg.identifier,
+                                             rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
+                                             rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
+                                    last_rx_valid = true;
+                                    validated = true;
+                                }
                                 break;
                             }
                         }
+                        if (!validated) vTaskDelay(pdMS_TO_TICKS(400));
                     }
 
-                    /* --- Paso 7: lectura resultado DID 1923 (multiframe) --- */
-                    const uint8_t read_1923[8] = {0x03,0x22,0x19,0x23,0xFF,0xFF,0xFF,0xFF};
-                    send_can_frame(SEED_REQUEST_ID, read_1923);
-
-                    bool got_1923_ff = false;
-                    for (int i = 0; i < 50 && !got_1923_ff; i++) {
-                        if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data[0] == 0x10 && rx_msg.data[2] == 0x62 &&
-                            rx_msg.data[3] == 0x19 && rx_msg.data[4] == 0x23) {
-                            got_1923_ff = true;
-                            snprintf(last_rx_line, sizeof(last_rx_line),
-                                     "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
-                                     (unsigned long)rx_msg.identifier,
-                                     rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
-                                     rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
-                            last_rx_valid = true;
-                        }
-                    }
-
-                    if (got_1923_ff) {
-                        const uint8_t fc[8] = {0x30,0x00,0x00,0xFF,0xFF,0xFF,0xFF,0xFF};
-                        send_can_frame(SEED_REQUEST_ID, fc);
-                        for (int i = 0; i < 50; i++) {
-                            if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
-                            if (rx_msg.identifier == SEED_RESPONSE_ID && rx_msg.data[0] == 0x21) {
-                                ESP_LOGI(TAG, "[action2] DID 1923 CF: %02X %02X %02X",
-                                         rx_msg.data[1], rx_msg.data[2], rx_msg.data[3]);
-                                break;
+                    if (validated) {
+                        /* Confirmación: tras el stop, el DID 1816 debe pasar a A0=0x00 (Autorizado).
+                         * En trazas reales tarda ~10 s, por eso el margen es de 20 s. */
+                        bool authorized = false;
+                        const int64_t auth_deadline_us = esp_timer_get_time() + (int64_t)20 * 1000000;
+                        while (esp_timer_get_time() < auth_deadline_us && !authorized) {
+                            const uint8_t read_1816[8] = {0x03,0x22,0x18,0x16,0x00,0x00,0x00,0x00};
+                            send_can_frame(SEED_REQUEST_ID, read_1816);
+                            for (int i = 0; i < 10; i++) {
+                                if (twai_receive(&rx_msg, pdMS_TO_TICKS(100)) != ESP_OK) continue;
+                                if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                                    rx_msg.data[0] == 0x07 && rx_msg.data[1] == 0x62 &&
+                                    rx_msg.data[2] == 0x18 && rx_msg.data[3] == 0x16) {
+                                    uint8_t a0 = rx_msg.data[4];
+                                    ESP_LOGI(TAG, "[action2] 1816 A0=0x%02X (00=Autorizado)", a0);
+                                    a2_auth_a0 = a0;
+                                    a2_auth_valid = true;
+                                    if (a0 == 0x00) authorized = true;
+                                    break;
+                                }
                             }
+                            if (!authorized) vTaskDelay(pdMS_TO_TICKS(450));
                         }
-                    }
 
-                    /* --- Paso 8: borrado DTCs --- */
-                    const uint8_t clear_dtc[8] = {0x04,0x14,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+                        action2_step_ok = true;
+                        if (!authorized) {
+                            ESP_LOGW(TAG, "[action2] RR=02 OK pero 1816 no confirmo Autorizado a tiempo");
+                        }
+                        /* El paso 10 (KEY OFF) corta la comunicación: detener Tester Present */
+                        tester_present_active = false;
+                        ESP_LOGI(TAG, "[action2] Calibracion validada. Tester Present detenido para KEY OFF");
+                    }
+                }
+
+                /* --- Paso 10-12: tras KEY OFF/ON, reabrir sesión + borrar DTC + verificar --- */
+                if (strcmp(action_key, "action2") == 0 && step_idx == 4) {
+                    ESP_LOGI(TAG, "[action2] Paso 10-12: reabrir sesion + borrado DTC + verificacion");
+                    tester_present_active = true;   /* reanudar Tester Present tras KEY ON */
+                    vTaskDelay(pdMS_TO_TICKS(50));
+                    drain_rx_queue();
+                    last_rx_valid = false;
+                    twai_message_t rx_msg;
+
+                    /* Reabrir sesión extendida (10 03) */
+                    const uint8_t diag_session[8] = {0x02,0x10,0x03,0x00,0x00,0x00,0x00,0x00};
+                    send_can_frame(SEED_REQUEST_ID, diag_session);
+                    uds_wait_with_pending(0x10, match_50_1003, NULL, 2000, 5000);
+
+                    /* Paso 11: borrado DTC (04 14 FF FF FF), tolerando 7F 14 78 (pending) */
+                    const uint8_t clear_dtc[8] = {0x04,0x14,0xFF,0xFF,0xFF,0x00,0x00,0x00};
                     send_can_frame(SEED_REQUEST_ID, clear_dtc);
 
-                    /* Espera por tiempo: en un bus CAN con tráfico ajeno, un bucle de N recepciones
-                     * puede agotarse antes de ver el 01 54 aunque la ECU responda bien. */
                     bool got_dtc_ok = false;
-                    const int64_t dtc_deadline_us = esp_timer_get_time() + (int64_t)15 * 1000000;
-                    while (esp_timer_get_time() < dtc_deadline_us) {
-                        if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) {
-                            continue;
-                        }
-                        if (rx_msg.identifier != SEED_RESPONSE_ID) {
-                            continue;
-                        }
+                    const int64_t dtc_deadline_us = esp_timer_get_time() + (int64_t)8 * 1000000;
+                    while (esp_timer_get_time() < dtc_deadline_us && !got_dtc_ok) {
+                        if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
+                        if (rx_msg.identifier != SEED_RESPONSE_ID) continue;
                         if (rx_msg.data_length_code >= 4 &&
                             rx_msg.data[0] == 0x03 && rx_msg.data[1] == 0x7F &&
                             rx_msg.data[2] == 0x14 && rx_msg.data[3] == 0x78) {
-                            continue;
+                            continue;   /* responsePending: esperar la respuesta real */
                         }
                         if (rx_msg.data_length_code >= 4 &&
                             rx_msg.data[0] == 0x03 && rx_msg.data[1] == 0x7F &&
@@ -851,14 +986,34 @@ step0_done:
                         }
                         if (rx_is_clear_dtc_positive(&rx_msg)) {
                             got_dtc_ok = true;
-                            break;
                         }
                     }
 
                     if (got_dtc_ok) {
                         ESP_LOGI(TAG, "[action2] DTCs borrados OK");
-                        step4_action2_ok = true;
+
+                        /* Paso 12: verificación final (03 19 02 FF) — servicio 0x59, opcional */
+                        const uint8_t read_dtc[8] = {0x03,0x19,0x02,0xFF,0x00,0x00,0x00,0x00};
+                        send_can_frame(SEED_REQUEST_ID, read_dtc);
+                        for (int i = 0; i < 25; i++) {
+                            if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
+                            if (rx_msg.identifier == SEED_RESPONSE_ID &&
+                                (rx_msg.data[1] == 0x59 || rx_msg.data[2] == 0x59)) {
+                                snprintf(last_rx_line, sizeof(last_rx_line),
+                                         "%08lX,false,Rx,0,8,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,",
+                                         (unsigned long)rx_msg.identifier,
+                                         rx_msg.data[0], rx_msg.data[1], rx_msg.data[2], rx_msg.data[3],
+                                         rx_msg.data[4], rx_msg.data[5], rx_msg.data[6], rx_msg.data[7]);
+                                last_rx_valid = true;
+                                break;
+                            }
+                        }
+
+                        action2_step_ok = true;
                     }
+
+                    /* Proceso terminado: detener Tester Present */
+                    tester_present_active = false;
                 }
             }
         }
@@ -867,10 +1022,24 @@ step0_done:
     if (strcmp(action_key, "action1") == 0 && step_idx >= 1 && step_idx <= 4) {
         return step_action1_ok;
     }
-    if (step_idx == 1 && strcmp(action_key, "action2") == 0) return step2_action2_ok;
-    if (step_idx == 2 && strcmp(action_key, "action2") == 0) return step3_action2_ok;
-    if (step_idx == 3 && strcmp(action_key, "action2") == 0) return step4_action2_ok;
+    if (strcmp(action_key, "action2") == 0 && step_idx >= 1 && step_idx <= 4) {
+        return action2_step_ok;
+    }
     return access_ok;
+}
+
+/* Worker: ejecuta un paso de action2 en segundo plano para no bloquear el servidor web */
+static void action2_worker_task(void *arg) {
+    (void)arg;
+    for (;;) {
+        xSemaphoreTake(a2_start_sem, portMAX_DELAY);
+        a2_worker_done = false;
+        a2_worker_success = false;
+        bool r = transmit_can_step(a2_req_action, (int)a2_req_step);
+        a2_worker_success = r;
+        a2_worker_done = true;
+        a2_worker_busy = false;
+    }
 }
 
 static esp_err_t last_rx_get_handler(httpd_req_t *req) {
@@ -958,10 +1127,34 @@ static esp_err_t execute_step_post_handler(httpd_req_t *req) {
                 }
             }
 
+            /* action2: ejecución asíncrona (worker) + feedback por /api/step_status */
+            if (strcmp(action, "action2") == 0) {
+                char aresp[64];
+                if (a2_worker_busy) {
+                    snprintf(aresp, sizeof(aresp), "{\"ok\":true,\"started\":false,\"busy\":true}");
+                } else {
+                    strncpy(a2_req_action, action, sizeof(a2_req_action) - 1);
+                    a2_req_action[sizeof(a2_req_action) - 1] = '\0';
+                    a2_req_step = step_idx;
+                    a2_flank_valid = false;
+                    a2_auth_valid = false;
+                    a2_torque_valid = false;
+                    a2_stop_pos_ok = false;
+                    a2_stop_neg_ok = false;
+                    a2_worker_done = false;
+                    a2_worker_success = false;
+                    a2_worker_busy = true;
+                    xSemaphoreGive(a2_start_sem);
+                    snprintf(aresp, sizeof(aresp), "{\"ok\":true,\"started\":true}");
+                }
+                httpd_resp_set_type(req, "application/json");
+                httpd_resp_send(req, aresp, HTTPD_RESP_USE_STRLEN);
+                return ESP_OK;
+            }
+
+            /* action1 (y resto): ejecución síncrona */
             bool result = transmit_can_step(action, step_idx);
             if (strcmp(action, "action1") == 0 && step_idx >= 1) {
-                step_ok = result;
-            } else if (strcmp(action, "action2") == 0 && step_idx >= 1) {
                 step_ok = result;
             } else {
                 access_ok = result;
@@ -971,6 +1164,28 @@ static esp_err_t execute_step_post_handler(httpd_req_t *req) {
     char resp[96];
     snprintf(resp, sizeof(resp), "{\"ok\":true,\"access_ok\":%s,\"step_ok\":%s}",
              access_ok ? "true" : "false", step_ok ? "true" : "false");
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+// Estado en vivo del paso action2 en curso (feedback de flancos / autorización)
+static esp_err_t step_status_get_handler(httpd_req_t *req) {
+    char resp[352];
+    snprintf(resp, sizeof(resp),
+             "{\"busy\":%s,\"done\":%s,\"success\":%s,"
+             "\"flank\":{\"valid\":%s,\"b0\":%u,\"b1\":%u,\"b2\":%u,\"b3\":%u,\"b4\":%u},"
+             "\"torque\":{\"valid\":%s,\"mnm\":%d,\"pos\":%s,\"neg\":%s},"
+             "\"auth\":{\"valid\":%s,\"a0\":%u}}",
+             a2_worker_busy ? "true" : "false",
+             a2_worker_done ? "true" : "false",
+             a2_worker_success ? "true" : "false",
+             a2_flank_valid ? "true" : "false",
+             (unsigned)a2_flank_b0, (unsigned)a2_flank_b1, (unsigned)a2_flank_b2,
+             (unsigned)a2_flank_b3, (unsigned)a2_flank_b4,
+             a2_torque_valid ? "true" : "false", (int)a2_torque_mnm,
+             a2_stop_pos_ok ? "true" : "false", a2_stop_neg_ok ? "true" : "false",
+             a2_auth_valid ? "true" : "false", (unsigned)a2_auth_a0);
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
@@ -1003,11 +1218,13 @@ static const httpd_uri_t logo_jpg_uri = { .uri = "/logo.jpg", .method = HTTP_GET
 static const httpd_uri_t execute_step_uri = { .uri = "/api/execute_step", .method = HTTP_POST, .handler = execute_step_post_handler };
 static const httpd_uri_t set_lang_uri = { .uri = "/api/set_lang", .method = HTTP_POST, .handler = set_lang_post_handler };
 static const httpd_uri_t last_rx_uri = { .uri = "/api/last_rx", .method = HTTP_GET, .handler = last_rx_get_handler };
+static const httpd_uri_t step_status_uri = { .uri = "/api/step_status", .method = HTTP_GET, .handler = step_status_get_handler };
 
 /* Start Web Server */
 static httpd_handle_t start_webserver(void) {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.lru_purge_enable = true;
+    config.max_uri_handlers = 16;   /* por defecto son 8; tenemos 11 rutas registradas */
 
     httpd_handle_t server = NULL;
     if (httpd_start(&server, &config) == ESP_OK) {
@@ -1021,6 +1238,7 @@ static httpd_handle_t start_webserver(void) {
         httpd_register_uri_handler(server, &execute_step_uri);
         httpd_register_uri_handler(server, &set_lang_uri);
         httpd_register_uri_handler(server, &last_rx_uri);
+        httpd_register_uri_handler(server, &step_status_uri);
         ESP_LOGI(TAG, "Web server iniciado en puerto %d", config.server_port);
         return server;
     }
@@ -1104,6 +1322,13 @@ void app_main(void) {
 
     // Init CAN
     can_init();
+
+    // Tarea de Tester Present (inactiva hasta que action2 la habilite)
+    xTaskCreate(tester_present_task, "tester_present", 3072, NULL, 5, NULL);
+
+    // Worker asíncrono de action2 (feedback de flancos sin bloquear el servidor)
+    a2_start_sem = xSemaphoreCreateBinary();
+    xTaskCreate(action2_worker_task, "action2_worker", 8192, NULL, 5, NULL);
 
     // Start Server
     start_webserver();

@@ -35,6 +35,17 @@ const translations = {
         },
         endstopHelp: {
             barTitle: "Guía de ajuste de topes"
+        },
+        a2fb: {
+            title: "Estado de flancos",
+            hint: "Gira el volante a tope a un lado, al otro y al centro (repite si hace falta) hasta que los CINCO indicadores estén en verde. Avanza solo.",
+            f0: "Flanco 1", f1: "Flanco 2", f2: "Flanco 3", f3: "Flanco 4", f4: "Flanco 5",
+            tqTitle: "Par contra los topes",
+            tqHint: "Gira a tope y APRIETA FUERTE (más de 7,5 Nm) a cada lado hasta que los dos topes estén en verde. Avanza solo.",
+            s1: "Tope 1 (> 7,5 Nm)", s2: "Tope 2 (> 7,5 Nm)",
+            authWait: "Esperando estado «Autorizado»…",
+            authOk: "Autorizado",
+            working: "Procesando…"
         }
     },
     en: {
@@ -73,6 +84,17 @@ const translations = {
         },
         endstopHelp: {
             barTitle: "Endstop adjustment guide"
+        },
+        a2fb: {
+            title: "Edge status",
+            hint: "Turn the wheel fully to one side, then the other, then centre (repeat if needed) until ALL FIVE indicators are green. It advances automatically.",
+            f0: "Edge 1", f1: "Edge 2", f2: "Edge 3", f3: "Edge 4", f4: "Edge 5",
+            tqTitle: "Torque against the stops",
+            tqHint: "Turn to each stop and PUSH HARD (more than 7.5 Nm) until both stops are green. It advances automatically.",
+            s1: "Stop 1 (> 7.5 Nm)", s2: "Stop 2 (> 7.5 Nm)",
+            authWait: "Waiting for “Authorised” state…",
+            authOk: "Authorised",
+            working: "Processing…"
         }
     },
     fr: {
@@ -111,6 +133,17 @@ const translations = {
         },
         endstopHelp: {
             barTitle: "Guide de réglage des butées"
+        },
+        a2fb: {
+            title: "État des flancs",
+            hint: "Tournez le volant en butée d'un côté, puis de l'autre, puis au centre (répétez si nécessaire) jusqu'à ce que les CINQ indicateurs soient verts. L'avancement est automatique.",
+            f0: "Flanc 1", f1: "Flanc 2", f2: "Flanc 3", f3: "Flanc 4", f4: "Flanc 5",
+            tqTitle: "Couple contre les butées",
+            tqHint: "Tournez en butée et APPUYEZ FORT (plus de 7,5 Nm) de chaque côté jusqu'à ce que les deux butées soient vertes. L'avancement est automatique.",
+            s1: "Butée 1 (> 7,5 Nm)", s2: "Butée 2 (> 7,5 Nm)",
+            authWait: "En attente de l'état « Autorisé »…",
+            authOk: "Autorisé",
+            working: "Traitement…"
         }
     },
     de: {
@@ -149,6 +182,17 @@ const translations = {
         },
         endstopHelp: {
             barTitle: "Leitfaden Anschlag-Einstellung"
+        },
+        a2fb: {
+            title: "Flankenstatus",
+            hint: "Lenkrad ganz zu einer Seite, dann zur anderen, dann mittig drehen (ggf. wiederholen), bis ALLE FÜNF Anzeigen grün sind. Es geht automatisch weiter.",
+            f0: "Flanke 1", f1: "Flanke 2", f2: "Flanke 3", f3: "Flanke 4", f4: "Flanke 5",
+            tqTitle: "Moment gegen die Anschläge",
+            tqHint: "Bis zum Anschlag drehen und KRÄFTIG DRÜCKEN (mehr als 7,5 Nm), auf beiden Seiten, bis beide Anschläge grün sind. Es geht automatisch weiter.",
+            s1: "Anschlag 1 (> 7,5 Nm)", s2: "Anschlag 2 (> 7,5 Nm)",
+            authWait: "Warte auf Status „Autorisiert“…",
+            authOk: "Autorisiert",
+            working: "Verarbeitung…"
         }
     }
 };
@@ -164,6 +208,21 @@ function applyEndstopHelpLang(lang) {
         link.textContent = c.help;
         link.href = '/guia-topes.html?lang=' + encodeURIComponent(lang);
     }
+}
+
+function applyA2FeedbackLang(lang) {
+    const f = translations[lang]?.a2fb;
+    if (!f) return;
+    const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    set('i18n-a2fb-title', f.title);
+    set('i18n-a2fb-hint', f.hint);
+    set('i18n-a2fb-f0', f.f0);
+    set('i18n-a2fb-f1', f.f1);
+    set('i18n-a2fb-f2', f.f2);
+    set('i18n-a2fb-f3', f.f3);
+    set('i18n-a2fb-f4', f.f4);
+    set('i18n-a2fb-s1', f.s1);
+    set('i18n-a2fb-s2', f.s2);
 }
 
 function applyCodingUiLang(lang) {
@@ -266,6 +325,7 @@ function changeLanguage() {
     if (stepBack) stepBack.setAttribute('aria-label', t.backStep);
     applyCodingUiLang(lang);
     applyEndstopHelpLang(lang);
+    applyA2FeedbackLang(lang);
 
     // Sync button titles with can_frames.json if available
     if (canData) {
@@ -343,6 +403,9 @@ function updateStepUI() {
         }
     }
     applyEndstopHelpLang(lang);
+    applyA2FeedbackLang(lang);
+    // El feedback de flancos se muestra solo durante la ejecución de un paso de action2
+    resetFlankFeedback();
 
     // Progress
     const totalUi = Math.max(1, getTotalUiSteps());
@@ -405,16 +468,150 @@ function updateCodingByte() {
     return hex;
 }
 
+function resetFlankFeedback() {
+    const card = document.getElementById('action2-feedback');
+    if (!card) return;
+    card.classList.add('hidden');
+    ['flank-0', 'flank-1', 'flank-2', 'flank-3', 'flank-4', 'stop-pos', 'stop-neg', 'auth-dot'].forEach(id => {
+        const e = document.getElementById(id);
+        if (e) e.classList.remove('on');
+    });
+    ['flank-grid', 'torque-box', 'auth-row'].forEach(id => {
+        const e = document.getElementById(id);
+        if (e) e.classList.add('hidden');
+    });
+    const tv = document.getElementById('torque-value');
+    if (tv) { tv.textContent = '—'; tv.classList.remove('reached'); }
+}
+
+function setDot(id, on) {
+    const e = document.getElementById(id);
+    if (e) e.classList.toggle('on', !!on);
+}
+
+function updateFlankUI(s, lang) {
+    const card = document.getElementById('action2-feedback');
+    if (!card) return;
+    const f = translations[lang]?.a2fb;
+    const setText = (id, text) => { const e = document.getElementById(id); if (e && text) e.textContent = text; };
+    if (s.flank && s.flank.valid) {
+        card.classList.remove('hidden');
+        document.getElementById('flank-grid')?.classList.remove('hidden');
+        if (f) { setText('i18n-a2fb-title', f.title); setText('i18n-a2fb-hint', f.hint); }
+        setDot('flank-0', s.flank.b0 === 1);
+        setDot('flank-1', s.flank.b1 === 1);
+        setDot('flank-2', s.flank.b2 === 1);
+        setDot('flank-3', s.flank.b3 === 1);
+        setDot('flank-4', s.flank.b4 === 1);
+    }
+    if (s.torque && s.torque.valid) {
+        card.classList.remove('hidden');
+        document.getElementById('torque-box')?.classList.remove('hidden');
+        if (f) { setText('i18n-a2fb-title', f.tqTitle); setText('i18n-a2fb-hint', f.tqHint); }
+        const nm = (s.torque.mnm || 0) / 1000;
+        const tv = document.getElementById('torque-value');
+        if (tv) {
+            let txt = Math.abs(nm).toFixed(1);
+            if (lang !== 'en') txt = txt.replace('.', ',');
+            tv.textContent = txt + ' Nm';
+            tv.classList.toggle('reached', Math.abs(nm) >= 7.5);
+        }
+        setDot('stop-pos', !!s.torque.pos);
+        setDot('stop-neg', !!s.torque.neg);
+    }
+    if (s.auth && s.auth.valid) {
+        card.classList.remove('hidden');
+        const authRow = document.getElementById('auth-row');
+        const authLbl = document.getElementById('auth-lbl');
+        if (authRow) authRow.classList.remove('hidden');
+        const ok = s.auth.a0 === 0;
+        setDot('auth-dot', ok);
+        if (authLbl && f) authLbl.textContent = ok ? f.authOk : f.authWait;
+    }
+}
+
+function finishCurrentAction(lang) {
+    document.getElementById('progress-inner').style.width = `100%`;
+    document.getElementById('step-description').innerText = translations[lang].completed;
+    const btn = document.getElementById('next-step-btn');
+    btn.innerText = translations[lang].finish;
+    btn.disabled = false;
+    btn.onclick = showMainScreen;
+}
+
+async function executeStepAction2(stepIdx, lang, btn) {
+    resetFlankFeedback();
+    try {
+        const response = await fetch(`/api/execute_step?action=action2&step=${stepIdx}`, { method: 'POST' });
+        if (!response.ok) throw new Error('bad response');
+        const data = await response.json().catch(() => null);
+        if (data && data.started === false) {
+            // Ya había un paso en curso; reintenta el sondeo igualmente
+        }
+    } catch (err) {
+        console.error(err);
+        alert(translations[lang].errorGeneric);
+        btn.disabled = false;
+        return;
+    }
+
+    const startStepIdx = currentStepIdx;
+    let pollFails = 0;
+    const timer = setInterval(async () => {
+        // Si el usuario cambió de pantalla, deja de sondear
+        if (currentActionKey !== 'action2' || currentStepIdx !== startStepIdx) {
+            clearInterval(timer);
+            return;
+        }
+        let s = null;
+        try {
+            const r = await fetch('/api/step_status');
+            if (!r.ok) throw new Error('status ' + r.status);
+            s = await r.json();
+            pollFails = 0;
+        } catch (e) {
+            // Si el endpoint de estado no responde de forma persistente, no dejar la UI colgada
+            if (++pollFails >= 30) {
+                clearInterval(timer);
+                alert(translations[lang].errorGeneric);
+                btn.disabled = false;
+            }
+            return; // reintenta en el siguiente tick
+        }
+        updateFlankUI(s, lang);
+        refreshKeyDebug();
+
+        if (s.done) {
+            clearInterval(timer);
+            if (s.success) {
+                if (currentStepIdx < getTotalUiSteps() - 1) {
+                    currentStepIdx++;
+                    setTimeout(() => updateStepUI(), 400);
+                } else {
+                    resetFlankFeedback();
+                    finishCurrentAction(lang);
+                }
+            } else {
+                // Falló o agotó el tiempo: deja el feedback visible y reactiva el botón
+                btn.disabled = false;
+            }
+        }
+    }, 500);
+}
+
 async function executeStep() {
     if (!currentActionKey) return;
 
     const btn = document.getElementById('next-step-btn');
     btn.disabled = true;
 
-    const action = canData[currentActionKey];
     const lang = document.getElementById('language-select').value;
-
     const actualStepIdx = getActualStepIdx();
+
+    if (currentActionKey === 'action2') {
+        return executeStepAction2(actualStepIdx, lang, btn);
+    }
+
     let url = `/api/execute_step?action=${currentActionKey}&step=${actualStepIdx}`;
     // En Acción 1 el XX debe enviarse ya en el Paso 1 (para que el firmware ejecute Paso 2 inmediatamente).
     if (currentActionKey === 'action1' && actualStepIdx === 0) {
@@ -451,7 +648,7 @@ async function executeStep() {
                     btn.disabled = false;
                 }
             } else if ((currentActionKey === 'action1' && (currentStepIdx >= 1 && currentStepIdx <= 3)) ||
-                       (currentActionKey === 'action2' && (currentStepIdx === 1 || currentStepIdx === 2 || currentStepIdx === 3))) {
+                       (currentActionKey === 'action2' && (currentStepIdx >= 1 && currentStepIdx <= 4))) {
                 if (data && data.step_ok) {
                     if (currentStepIdx < getTotalUiSteps() - 1) {
                         currentStepIdx++;

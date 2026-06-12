@@ -75,6 +75,28 @@
                             class="help-link-btn" id="action2-help-link">Ayuda</a>
                     </div>
                 </div>
+                <div id="action2-feedback" class="selector-card hidden">
+                    <div class="selector-title" id="i18n-a2fb-title">Estado de flancos</div>
+                    <p class="selector-hint" id="i18n-a2fb-hint">Gira el volante a tope a un lado, al otro y al centro hasta que los cinco indicadores estén en verde.</p>
+                    <div class="flank-grid hidden" id="flank-grid">
+                        <div class="flank-item"><span class="flank-dot" id="flank-0"></span><span id="i18n-a2fb-f0">Flanco 1</span></div>
+                        <div class="flank-item"><span class="flank-dot" id="flank-1"></span><span id="i18n-a2fb-f1">Flanco 2</span></div>
+                        <div class="flank-item"><span class="flank-dot" id="flank-2"></span><span id="i18n-a2fb-f2">Flanco 3</span></div>
+                        <div class="flank-item"><span class="flank-dot" id="flank-3"></span><span id="i18n-a2fb-f3">Flanco 4</span></div>
+                        <div class="flank-item"><span class="flank-dot" id="flank-4"></span><span id="i18n-a2fb-f4">Flanco 5</span></div>
+                    </div>
+                    <div class="torque-box hidden" id="torque-box">
+                        <div class="torque-value" id="torque-value">0,0 Nm</div>
+                        <div class="flank-grid">
+                            <div class="flank-item"><span class="flank-dot" id="stop-pos"></span><span id="i18n-a2fb-s1">Tope 1 (&gt; 7,5 Nm)</span></div>
+                            <div class="flank-item"><span class="flank-dot" id="stop-neg"></span><span id="i18n-a2fb-s2">Tope 2 (&gt; 7,5 Nm)</span></div>
+                        </div>
+                    </div>
+                    <div class="flank-item flank-auth hidden" id="auth-row">
+                        <span class="flank-dot" id="auth-dot"></span><span id="auth-lbl">—</span>
+                    </div>
+                    <div class="flank-spinner" id="a2fb-spinner"></div>
+                </div>
                 <div id="step2-selector" class="selector-card hidden">
                     <div class="selector-card-head">
                         <div class="selector-title" id="i18n-coding-title">Selecciona las opciones de configuración</div>
