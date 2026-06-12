@@ -64,10 +64,10 @@
             },
             {
                 "description": {
-                    "es": "Paso 5: Verificación final",
-                    "en": "Step 5: Final verification",
-                    "fr": "Étape 5 : Vérification finale",
-                    "de": "Schritt 5: Abschlussprüfung"
+                    "es": "Paso 5: Pulse «Ejecutar Paso» para verificar la codificación. Si es correcta, al finalizar apague el contacto y deje el vehículo apagado al menos 2 minutos.",
+                    "en": "Step 5: Press “Execute step” to verify the coding. If it is correct, when finished switch the ignition off and leave the vehicle off for at least 2 minutes.",
+                    "fr": "Étape 5 : Appuyez sur « Exécuter l'étape » pour vérifier le codage. Si c'est correct, à la fin coupez le contact et laissez le véhicule à l'arrêt au moins 2 minutes.",
+                    "de": "Schritt 5: „Schritt ausführen“ drücken, um die Codierung zu prüfen. Wenn alles stimmt, nach Abschluss Zündung ausschalten und das Fahrzeug mindestens 2 Minuten aus lassen."
                 },
                 "frames": []
             }

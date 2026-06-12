@@ -6,6 +6,7 @@ const translations = {
         next: "Ejecutar Paso",
         finish: "Finalizar",
         completed: "¡Acción completada!",
+        completedAction1: "¡Codificación completada! Apague completamente el contacto y deje el vehículo apagado al menos 2 minutos antes de volver a utilizarlo.",
         alertNeedByte: "Configura el byte XX y luego ejecuta el Paso 1.",
         errorGeneric: "Error",
         backStep: "Volver a la pantalla principal",
@@ -56,6 +57,7 @@ const translations = {
         next: "Execute step",
         finish: "Finish",
         completed: "Action completed!",
+        completedAction1: "Coding complete! Switch the ignition fully off and leave the vehicle off for at least 2 minutes before using it again.",
         alertNeedByte: "Configure byte XX and then run step 1.",
         errorGeneric: "Error",
         backStep: "Back to main screen",
@@ -106,6 +108,7 @@ const translations = {
         next: "Exécuter l'étape",
         finish: "Terminer",
         completed: "Action terminée !",
+        completedAction1: "Codification terminée ! Coupez complètement le contact et laissez le véhicule à l'arrêt au moins 2 minutes avant de le réutiliser.",
         alertNeedByte: "Configurez l'octet XX puis exécutez l'étape 1.",
         errorGeneric: "Erreur",
         backStep: "Retour à l'écran principal",
@@ -156,6 +159,7 @@ const translations = {
         next: "Schritt ausführen",
         finish: "Abschließen",
         completed: "Aktion abgeschlossen!",
+        completedAction1: "Codierung abgeschlossen! Zündung vollständig ausschalten und das Fahrzeug mindestens 2 Minuten ausgeschaltet lassen, bevor Sie es wieder benutzen.",
         alertNeedByte: "Byte XX konfigurieren und dann Schritt 1 ausführen.",
         errorGeneric: "Fehler",
         backStep: "Zurück zum Hauptbildschirm",
@@ -509,9 +513,15 @@ function updateFlankUI(s, lang) {
     }
 }
 
+function getCompletedMessage(lang) {
+    const t = translations[lang];
+    if (currentActionKey === 'action1' && t.completedAction1) return t.completedAction1;
+    return t.completed;
+}
+
 function finishCurrentAction(lang) {
     document.getElementById('progress-inner').style.width = `100%`;
-    document.getElementById('step-description').innerText = translations[lang].completed;
+    document.getElementById('step-description').innerText = getCompletedMessage(lang);
     const btn = document.getElementById('next-step-btn');
     btn.innerText = translations[lang].finish;
     btn.disabled = false;
@@ -631,7 +641,7 @@ async function executeStep() {
                         setTimeout(() => updateStepUI(), 300);
                     } else {
                         document.getElementById('progress-inner').style.width = `100%`;
-                        document.getElementById('step-description').innerText = translations[lang].completed;
+                        document.getElementById('step-description').innerText = getCompletedMessage(lang);
                         btn.innerText = translations[lang].finish;
                         btn.disabled = false;
                         btn.onclick = showMainScreen;
@@ -645,7 +655,7 @@ async function executeStep() {
             } else {
                 // Final step completed
                 document.getElementById('progress-inner').style.width = `100%`;
-                document.getElementById('step-description').innerText = translations[lang].completed;
+                document.getElementById('step-description').innerText = getCompletedMessage(lang);
                 btn.innerText = translations[lang].finish;
                 btn.disabled = false;
                 btn.onclick = showMainScreen; // Temporary override for final click

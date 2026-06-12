@@ -328,6 +328,56 @@ static bool match_6e_0600(const twai_message_t *m, void *ctx) {
             m->data[0] == 0x03 && m->data[1] == 0x6E && m->data[2] == 0x06 && m->data[3] == 0x00);
 }
 
+/* Fecha F199 (YY MM DD) leída del ECU durante action1; se reutiliza tras el reset */
+static uint8_t action1_f199_yy = 0;
+static uint8_t action1_f199_mm = 0;
+static uint8_t action1_f199_dd = 0;
+static bool    action1_f199_ok = false;
+
+static bool action1_read_f199_date(uint8_t *yy, uint8_t *mm, uint8_t *dd) {
+    const uint8_t read_req[8] = {0x03, 0x22, 0xF1, 0x99, 0x00, 0x00, 0x00, 0x00};
+    if (!send_can_frame(SEED_REQUEST_ID, read_req)) return false;
+    twai_message_t rx_msg;
+    for (int i = 0; i < 30; i++) {
+        if (twai_receive(&rx_msg, pdMS_TO_TICKS(200)) != ESP_OK) continue;
+        if (rx_msg.identifier == SEED_RESPONSE_ID &&
+            rx_msg.data_length_code >= 7 &&
+            rx_msg.data[0] == 0x06 && rx_msg.data[1] == 0x62 &&
+            rx_msg.data[2] == 0xF1 && rx_msg.data[3] == 0x99) {
+            *yy = rx_msg.data[4];
+            *mm = rx_msg.data[5];
+            *dd = rx_msg.data[6];
+            ESP_LOGI(TAG, "[action1] F199 leida: %02X %02X %02X", *yy, *mm, *dd);
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool action1_write_f199(uint8_t yy, uint8_t mm, uint8_t dd) {
+    const uint8_t req[8] = {0x06, 0x2E, 0xF1, 0x99, yy, mm, dd, 0xFF};
+    if (!send_can_frame(SEED_REQUEST_ID, req)) return false;
+    return uds_wait_with_pending(0x2E, match_6e_f199, NULL, 2000, 5000);
+}
+
+static bool action1_write_f198(void) {
+    const uint8_t f198_ff[8] = {0x10, 0x09, 0x2E, 0xF1, 0x98, 0x0A, 0x2C, 0x2F};
+    if (!send_can_frame(SEED_REQUEST_ID, f198_ff)) return false;
+    if (!uds_wait_with_pending(0x2E, match_30_flow, NULL, 2000, 5000)) return false;
+    const uint8_t f198_cf[8] = {0x21, 0xCF, 0x86, 0x9F, 0xFF, 0xFF, 0xFF, 0xFF};
+    if (!send_can_frame(SEED_REQUEST_ID, f198_cf)) return false;
+    return uds_wait_with_pending(0x2E, match_6e_f198, NULL, 2000, 5000);
+}
+
+static bool action1_open_extended_session(void) {
+    const uint8_t tester_present[8] = {0x02, 0x3E, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    const uint8_t diag_session[8]   = {0x02, 0x10, 0x03, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    if (!send_can_frame(SEED_REQUEST_ID, tester_present)) return false;
+    if (!uds_wait_with_pending(0x3E, match_7e_tester_present, NULL, 2000, 5000)) return false;
+    if (!send_can_frame(SEED_REQUEST_ID, diag_session)) return false;
+    return uds_wait_with_pending(0x10, match_50_1003, NULL, 2000, 5000);
+}
+
 static bool parse_query_byte(const char *str, uint8_t *out) {
     if (!str || !out) return false;
     char *endptr = NULL;
@@ -462,6 +512,7 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                     // - TX -> esperar RX antes del siguiente TX
                     drain_rx_queue();
                     last_rx_valid = false;
+                    action1_f199_ok = false;
 
                     const uint8_t tester_present[8] = {0x02,0x3E,0x00,0xFF,0xFF,0xFF,0xFF,0xFF};
                     const uint8_t diag_session[8]   = {0x02,0x10,0x03,0xFF,0xFF,0xFF,0xFF,0xFF};
@@ -499,17 +550,15 @@ static bool transmit_can_step(const char *action_key, int step_idx) {
                     if (strcmp(action_key, "action1") == 0) {
                         if (!pending_xx_valid) goto step0_done;
 
-                        const uint8_t f199_req[8] = {0x06, 0x2E, 0xF1, 0x99, 0x26, 0x03, 0x06, 0xFF};
-                        if (!send_can_frame(SEED_REQUEST_ID, f199_req)) goto step0_done;
-                        if (!uds_wait_with_pending(0x2E, match_6e_f199, NULL, 2000, 5000)) goto step0_done;
+                        uint8_t yy = 0, mm = 0, dd = 0;
+                        if (!action1_read_f199_date(&yy, &mm, &dd)) goto step0_done;
+                        action1_f199_yy = yy;
+                        action1_f199_mm = mm;
+                        action1_f199_dd = dd;
+                        action1_f199_ok = true;
 
-                        const uint8_t f198_ff[8] = {0x10, 0x09, 0x2E, 0xF1, 0x98, 0x0A, 0x2C, 0x2F};
-                        if (!send_can_frame(SEED_REQUEST_ID, f198_ff)) goto step0_done;
-                        if (!uds_wait_with_pending(0x2E, match_30_flow, NULL, 2000, 5000)) goto step0_done;
-
-                        const uint8_t f198_cf[8] = {0x21, 0xCF, 0x86, 0x9F, 0xFF, 0xFF, 0xFF, 0xFF};
-                        if (!send_can_frame(SEED_REQUEST_ID, f198_cf)) goto step0_done;
-                        if (!uds_wait_with_pending(0x2E, match_6e_f198, NULL, 2000, 5000)) goto step0_done;
+                        if (!action1_write_f199(yy, mm, dd)) goto step0_done;
+                        if (!action1_write_f198()) goto step0_done;
 
                         const uint8_t write_coding[8] = {0x07, 0x2E, 0x06, 0x00, pending_xx, 0x1F, 0x00, 0x00};
                         if (!send_can_frame(SEED_REQUEST_ID, write_coding)) goto step0_done;
@@ -553,11 +602,7 @@ step0_done:
                     }
 
                     if (got_reset_ok) {
-                        const uint8_t tester_present[8] = {0x02,0x3E,0x00,0xFF,0xFF,0xFF,0xFF,0xFF};
-                        const uint8_t diag_session[8] = {0x02,0x10,0x03,0xFF,0xFF,0xFF,0xFF,0xFF};
-                        send_can_frame(SEED_REQUEST_ID, tester_present);
-                        send_can_frame(SEED_REQUEST_ID, diag_session);
-                        step_action1_ok = true;
+                        step_action1_ok = action1_open_extended_session();
                     }
                 }
 
@@ -565,50 +610,21 @@ step0_done:
                     ESP_LOGI(TAG, "[action1] Paso 4: reescritura fingerprint y fecha post-reset");
                     drain_rx_queue();
                     last_rx_valid = false;
-                    const uint8_t f198_ff[8] = {0x10,0x09,0x2E,0xF1,0x98,0x0A,0x2C,0x2F};
-                    send_can_frame(SEED_REQUEST_ID, f198_ff);
 
-                    twai_message_t rx_msg;
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code >= 3 &&
-                            rx_msg.data[0] == 0x30 &&
-                            rx_msg.data[1] == 0x0F &&
-                            rx_msg.data[2] == 0x03) {
-                            break;
+                    uint8_t yy = action1_f199_yy;
+                    uint8_t mm = action1_f199_mm;
+                    uint8_t dd = action1_f199_dd;
+                    if (!action1_f199_ok && !action1_read_f199_date(&yy, &mm, &dd)) {
+                        step_action1_ok = false;
+                    } else {
+                        if (!action1_f199_ok) {
+                            action1_f199_yy = yy;
+                            action1_f199_mm = mm;
+                            action1_f199_dd = dd;
+                            action1_f199_ok = true;
                         }
-                    }
-
-                    const uint8_t f198_cf[8] = {0x21,0xCF,0x86,0x9F,0xFF,0xFF,0xFF,0xFF};
-                    send_can_frame(SEED_REQUEST_ID, f198_cf);
-
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code >= 4 &&
-                            rx_msg.data[0] == 0x03 &&
-                            rx_msg.data[1] == 0x6E &&
-                            rx_msg.data[2] == 0xF1 &&
-                            rx_msg.data[3] == 0x98) {
-                            break;
-                        }
-                    }
-
-                    const uint8_t f199_req[8] = {0x06,0x2E,0xF1,0x99,0x26,0x03,0x06,0xFF};
-                    send_can_frame(SEED_REQUEST_ID, f199_req);
-
-                    for (;;) {
-                        if (twai_receive(&rx_msg, portMAX_DELAY) != ESP_OK) continue;
-                        if (rx_msg.identifier == SEED_RESPONSE_ID &&
-                            rx_msg.data_length_code >= 4 &&
-                            rx_msg.data[0] == 0x03 &&
-                            rx_msg.data[1] == 0x6E &&
-                            rx_msg.data[2] == 0xF1 &&
-                            rx_msg.data[3] == 0x99) {
-                            step_action1_ok = true;
-                            break;
-                        }
+                        step_action1_ok = action1_write_f198() &&
+                                            action1_write_f199(yy, mm, dd);
                     }
                 }
 
