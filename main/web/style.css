@@ -262,28 +262,6 @@ footer {
     min-height: 3em;
 }
 
-.debug-card {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    background: rgba(217, 1, 122, 0.05);
-    padding: 10px 12px;
-    border-radius: 12px;
-    margin: 0 0 20px 0;
-    font-size: 0.85rem;
-    color: var(--secondary-color);
-    border: 1px dashed rgba(217, 1, 122, 0.2);
-}
-
-.debug-label {
-    font-weight: 600;
-}
-
-#key-debug-value {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    font-size: 0.8rem;
-}
-
 .selector-card {
     display: flex;
     flex-direction: column;

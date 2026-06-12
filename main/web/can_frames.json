@@ -92,10 +92,10 @@
             },
             {
                 "description": {
-                    "es": "Paso 2: Pulse «Ejecutar Paso» y gire el volante despacio: tope izquierdo, tope derecho y centro. Repita el recorrido hasta que los 5 indicadores estén en verde. Avanza solo.",
-                    "en": "Step 2: Press “Execute step” and slowly turn the wheel: full left, full right, then centre. Repeat the sweep until all 5 indicators are green. It advances automatically.",
-                    "fr": "Étape 2 : Appuyez sur « Exécuter l'étape » et tournez lentement le volant : butée gauche, butée droite, puis centre. Répétez jusqu'à ce que les 5 indicateurs soient verts. L'avancement est automatique.",
-                    "de": "Schritt 2: „Schritt ausführen“ drücken und das Lenkrad langsam drehen: Anschlag links, Anschlag rechts, dann Mitte. Wiederholen, bis alle 5 Anzeigen grün sind. Es geht automatisch weiter."
+                    "es": "Paso 2: ENCIENDA EL MOTOR, pulse «Ejecutar Paso» y gire el volante despacio: tope izquierdo, tope derecho y centro. Repita el recorrido hasta que los 5 indicadores estén en verde. Avanza solo.",
+                    "en": "Step 2: START THE ENGINE, press “Execute step” and slowly turn the wheel: full left, full right, then centre. Repeat the sweep until all 5 indicators are green. It advances automatically.",
+                    "fr": "Étape 2 : DÉMARREZ LE MOTEUR, appuyez sur « Exécuter l'étape » et tournez lentement le volant : butée gauche, butée droite, puis centre. Répétez jusqu'à ce que les 5 indicateurs soient verts. L'avancement est automatique.",
+                    "de": "Schritt 2: MOTOR STARTEN, „Schritt ausführen“ drücken und das Lenkrad langsam drehen: Anschlag links, Anschlag rechts, dann Mitte. Wiederholen, bis alle 5 Anzeigen grün sind. Es geht automatisch weiter."
                 },
                 "frames": []
             },

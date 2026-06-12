@@ -766,6 +766,9 @@ a2_step0_done:
                         if (!flanks_ok) vTaskDelay(pdMS_TO_TICKS(450));
                     }
 
+                    /* Pausa para que el mecánico vea los 5 indicadores en verde antes de avanzar */
+                    if (flanks_ok) vTaskDelay(pdMS_TO_TICKS(1500));
+
                     action2_step_ok = flanks_ok;
                 }
 
@@ -857,6 +860,8 @@ a2_step0_done:
                             both_stops = a2_stop_pos_ok && a2_stop_neg_ok;
                             if (!both_stops) vTaskDelay(pdMS_TO_TICKS(300));
                         }
+                        /* Pausa para que el mecánico vea los dos topes en verde antes de avanzar */
+                        if (both_stops) vTaskDelay(pdMS_TO_TICKS(1500));
                         action2_step_ok = both_stops;
                     }
                 }
@@ -1056,9 +1061,15 @@ static esp_err_t last_rx_get_handler(httpd_req_t *req) {
 
 /* Handlers */
 
+/* Evita que el navegador use copias antiguas de la web tras actualizar el firmware */
+static void resp_no_cache(httpd_req_t *req) {
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+}
+
 // Serve index.html
 static esp_err_t index_get_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/html");
+    resp_no_cache(req);
     httpd_resp_send(req, (const char *)index_html_start, index_html_end - index_html_start);
     return ESP_OK;
 }
@@ -1066,6 +1077,7 @@ static esp_err_t index_get_handler(httpd_req_t *req) {
 // Serve style.css
 static esp_err_t style_get_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/css");
+    resp_no_cache(req);
     httpd_resp_send(req, (const char *)style_css_start, style_css_end - style_css_start);
     return ESP_OK;
 }
@@ -1073,6 +1085,7 @@ static esp_err_t style_get_handler(httpd_req_t *req) {
 // Serve script.js
 static esp_err_t script_get_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "application/javascript");
+    resp_no_cache(req);
     httpd_resp_send(req, (const char *)script_js_start, script_js_end - script_js_start);
     return ESP_OK;
 }
@@ -1080,6 +1093,7 @@ static esp_err_t script_get_handler(httpd_req_t *req) {
 // Serve can_frames.json
 static esp_err_t step_json_get_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "application/json");
+    resp_no_cache(req);
     httpd_resp_send(req, (const char *)can_frames_json_start, can_frames_json_end - can_frames_json_start);
     return ESP_OK;
 }

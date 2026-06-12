@@ -12,7 +12,6 @@ const translations = {
         coding: {
             codingTitle: "Configuración",
             help: "Ayuda",
-            debugRx: "Respuesta RX:",
             dsrSub: "DSR — Recomendación de dirección",
             dsrOn: "Si Activado — Asistencia a la estabilidad mediante impulso en el volante",
             dsrOff: "Si Desactivado — Sin asistencia en situaciones de inestabilidad",
@@ -43,6 +42,8 @@ const translations = {
             tqTitle: "Par contra los topes",
             tqHint: "Gira a tope y APRIETA FUERTE (más de 7,5 Nm) a cada lado hasta que los dos topes estén en verde. Avanza solo.",
             s1: "Tope 1 (> 7,5 Nm)", s2: "Tope 2 (> 7,5 Nm)",
+            valTitle: "Guardando la calibración",
+            valHint: "Espere unos segundos, no toque el volante.",
             authWait: "Esperando estado «Autorizado»…",
             authOk: "Autorizado",
             working: "Procesando…"
@@ -61,7 +62,6 @@ const translations = {
         coding: {
             codingTitle: "Configuration",
             help: "Help",
-            debugRx: "RX response:",
             dsrSub: "DSR — Steering recommendation",
             dsrOn: "If enabled — Stability assist via steering impulse",
             dsrOff: "If disabled — No assist in instability situations",
@@ -92,6 +92,8 @@ const translations = {
             tqTitle: "Torque against the stops",
             tqHint: "Turn to each stop and PUSH HARD (more than 7.5 Nm) until both stops are green. It advances automatically.",
             s1: "Stop 1 (> 7.5 Nm)", s2: "Stop 2 (> 7.5 Nm)",
+            valTitle: "Saving the calibration",
+            valHint: "Wait a few seconds, do not touch the wheel.",
             authWait: "Waiting for “Authorised” state…",
             authOk: "Authorised",
             working: "Processing…"
@@ -110,7 +112,6 @@ const translations = {
         coding: {
             codingTitle: "Configuration",
             help: "Aide",
-            debugRx: "Réponse RX :",
             dsrSub: "DSR — Recommandation de direction",
             dsrOn: "Si activé — Assistance à la stabilité par impulsion sur le volant",
             dsrOff: "Si désactivé — Pas d'assistance en situation d'instabilité",
@@ -141,6 +142,8 @@ const translations = {
             tqTitle: "Couple contre les butées",
             tqHint: "Tournez en butée et APPUYEZ FORT (plus de 7,5 Nm) de chaque côté jusqu'à ce que les deux butées soient vertes. L'avancement est automatique.",
             s1: "Butée 1 (> 7,5 Nm)", s2: "Butée 2 (> 7,5 Nm)",
+            valTitle: "Enregistrement du calibrage",
+            valHint: "Patientez quelques secondes, ne touchez pas le volant.",
             authWait: "En attente de l'état « Autorisé »…",
             authOk: "Autorisé",
             working: "Traitement…"
@@ -159,7 +162,6 @@ const translations = {
         coding: {
             codingTitle: "Konfiguration",
             help: "Hilfe",
-            debugRx: "RX-Antwort:",
             dsrSub: "DSR — Lenkempfehlung",
             dsrOn: "Wenn aktiv — Stabilitätshilfe durch Lenkimpuls",
             dsrOff: "Wenn inaktiv — Keine Hilfe bei Instabilität",
@@ -190,6 +192,8 @@ const translations = {
             tqTitle: "Moment gegen die Anschläge",
             tqHint: "Bis zum Anschlag drehen und KRÄFTIG DRÜCKEN (mehr als 7,5 Nm), auf beiden Seiten, bis beide Anschläge grün sind. Es geht automatisch weiter.",
             s1: "Anschlag 1 (> 7,5 Nm)", s2: "Anschlag 2 (> 7,5 Nm)",
+            valTitle: "Kalibrierung wird gespeichert",
+            valHint: "Einige Sekunden warten, das Lenkrad nicht berühren.",
             authWait: "Warte auf Status „Autorisiert“…",
             authOk: "Autorisiert",
             working: "Verarbeitung…"
@@ -233,7 +237,6 @@ function applyCodingUiLang(lang) {
         if (el) el.textContent = text;
     };
     set('i18n-coding-title', c.codingTitle);
-    set('i18n-debug-rx', c.debugRx);
     set('i18n-dsr-sub', c.dsrSub);
     set('i18n-dsr-on', c.dsrOn);
     set('i18n-dsr-off', c.dsrOff);
@@ -374,15 +377,6 @@ function updateStepUI() {
     const step = steps[actualIdx];
     document.getElementById('step-description').innerText = step.description[lang];
 
-    const debugCard = document.getElementById('key-debug');
-    if (debugCard) {
-        if ((currentActionKey === 'action1' || currentActionKey === 'action2') && currentStepIdx === 0) {
-            refreshKeyDebug();
-        } else {
-            debugCard.classList.add('hidden');
-        }
-    }
-
     const selectorCard = document.getElementById('step2-selector');
     if (selectorCard) {
         // El byte XX debe estar listo antes del paso 1; lo mostramos también en el paso 1.
@@ -421,27 +415,6 @@ function updateStepUI() {
         btn.innerText = t.finish;
     } else {
         btn.innerText = t.next;
-    }
-}
-
-async function refreshKeyDebug() {
-    const debugCard = document.getElementById('key-debug');
-    const debugValue = document.getElementById('key-debug-value');
-    if (!debugCard || !debugValue) return;
-
-    try {
-        const response = await fetch('/api/last_rx');
-        if (!response.ok) throw new Error('Bad response');
-        const data = await response.json();
-        if (data.valid) {
-            debugValue.innerText = data.key;
-            debugCard.classList.remove('hidden');
-        } else {
-            debugValue.innerText = '---';
-            debugCard.classList.add('hidden');
-        }
-    } catch (err) {
-        debugCard.classList.add('hidden');
     }
 }
 
@@ -521,6 +494,12 @@ function updateFlankUI(s, lang) {
     }
     if (s.auth && s.auth.valid) {
         card.classList.remove('hidden');
+        /* Fase de validación (sin datos de flancos ni par): textos propios
+         * para no mostrar las instrucciones de flancos sin sus puntos */
+        if (f && !(s.flank && s.flank.valid) && !(s.torque && s.torque.valid)) {
+            setText('i18n-a2fb-title', f.valTitle);
+            setText('i18n-a2fb-hint', f.valHint);
+        }
         const authRow = document.getElementById('auth-row');
         const authLbl = document.getElementById('auth-lbl');
         if (authRow) authRow.classList.remove('hidden');
@@ -579,7 +558,6 @@ async function executeStepAction2(stepIdx, lang, btn) {
             return; // reintenta en el siguiente tick
         }
         updateFlankUI(s, lang);
-        refreshKeyDebug();
 
         if (s.done) {
             clearInterval(timer);
@@ -636,8 +614,6 @@ async function executeStep() {
             } catch (e) {
                 data = null;
             }
-
-            refreshKeyDebug();
 
             if ((currentActionKey === 'action1' || currentActionKey === 'action2') && currentStepIdx === 0) {
                 if (data && data.access_ok) {
